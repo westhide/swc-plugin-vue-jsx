@@ -1,1 +1,3 @@
-const a = 1;
+import {a, c} from "./a"
+
+const b = 1;
