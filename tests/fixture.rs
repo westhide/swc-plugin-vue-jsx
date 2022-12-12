@@ -11,6 +11,7 @@ use swc_core::{
         visit::as_folder,
     },
 };
+use swc_plugin_vue_jsx::{PluginOptions, VueJSX};
 use testing::fixture;
 
 fn syntax() -> Syntax {
@@ -19,8 +20,6 @@ fn syntax() -> Syntax {
         ..Default::default()
     })
 }
-
-use swc_plugin_vue_jsx::VueJSX;
 
 #[fixture("tests/fixture/**/*.tsx", exclude("output.tsx"))]
 fn tsx_fixture(input: PathBuf) {
@@ -33,9 +32,15 @@ fn tsx_fixture(input: PathBuf) {
     test_fixture(
         syntax(),
         &|_| {
+            let opts = PluginOptions::from(
+                r#"{
+                    "customElementPatterns":["diva"]
+                }"#,
+            );
+
             chain!(
                 resolver(Mark::new(), Mark::new(), false),
-                as_folder(VueJSX),
+                as_folder(VueJSX::new(opts)),
                 hygiene()
             )
         },

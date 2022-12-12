@@ -1,3 +1,9 @@
-import {a, c} from "./a"
+import {a as a1, c} from "./a"
 
-const b = 1;
+{
+
+    const a1 = 1;
+}
+
+const tmpl = <div v:model={""}></div>
+
