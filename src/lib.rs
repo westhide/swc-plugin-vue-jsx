@@ -1,6 +1,5 @@
 #![feature(box_syntax)]
 #![feature(box_patterns)]
-#![feature(hash_set_entry)]
 #![feature(is_some_and)]
 #![feature(let_chains)]
 #![feature(if_let_guard)]
@@ -18,13 +17,13 @@ use swc_core::{
     plugin::{metadata::TransformPluginProgramMetadata as Metadata, plugin_transform},
 };
 
-use crate::{import_helper::ImportHelper, vnode::VNode};
+use crate::{import_helper::ImportHelper, utils::clean_jsx_text::clean_jsx_text, vnode::VNode};
 
 mod constant;
 #[path = "import-helper/mod.rs"]
 mod import_helper;
 mod options;
-pub mod patch_flag;
+mod patch_flag;
 mod shared;
 mod utils;
 #[path = "VNode/mod.rs"]
@@ -75,6 +74,7 @@ impl VisitMut for VueJSX {
             Expr::JSXElement(box element) => {
                 let mut vnode = VNode::parse(element);
                 vnode.analyze(self);
+                println!("{}", clean_jsx_text("a  b \r d  \n  e\n  \n \nf"));
 
                 println!("======{:#?}", vnode);
             },
