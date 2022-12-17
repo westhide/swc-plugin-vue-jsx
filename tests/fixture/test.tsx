@@ -1,9 +1,4 @@
-import {a as a1, c} from "./a"
+// comment debug
 
-{
-
-    const a1 = 1;
-}
-
-const tmpl = <div v:model={""}></div>
+const tmpl = <div on:clickl={a} {...b} {...c}></div>
 

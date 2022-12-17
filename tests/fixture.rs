@@ -31,7 +31,7 @@ fn tsx_fixture(input: PathBuf) {
 
     test_fixture(
         syntax(),
-        &|_| {
+        &|tester| {
             let opts = PluginOptions::from(
                 r#"{
                     "customElementPatterns":["diva"]
@@ -40,7 +40,11 @@ fn tsx_fixture(input: PathBuf) {
 
             chain!(
                 resolver(Mark::new(), Mark::new(), false),
-                as_folder(VueJSX::new(opts)),
+                as_folder(VueJSX::new(
+                    opts,
+                    Some(tester.comments.clone()),
+                    Mark::new()
+                )),
                 hygiene()
             )
         },

@@ -1,3 +1,3 @@
-pub use self::core::ImportHelper;
+pub use self::helper::ImportHelper;
 
-pub mod core;
+pub mod helper;

@@ -1,14 +1,18 @@
-use swc_core::ecma::ast::{JSXElement, JSXElementName, JSXMemberExpr};
+use swc_core::{
+    common::util::take::Take,
+    ecma::{
+        ast::{Expr, JSXElement, JSXElementName, JSXMemberExpr},
+        utils::ExprFactory,
+    },
+};
 
 use crate::{
-    constant::{CLASS, REF, STYLE},
-    patch_flag::PatchFlag,
-    shared::{parse::Parse, state::State},
-    utils::pattern::is_native_tag,
-    vnode::{
-        props::{Key, Prop},
-        VNode,
+    shared::{convert::Convert, state::State, transform::Transform},
+    utils::{
+        ast::{create_vnode_expr, string_lit_expr},
+        pattern::is_native_tag,
     },
+    vnode::{prop::PropStore, VNode},
 };
 
 /// ## [Tag]
@@ -17,7 +21,8 @@ use crate::{
 #[derive(Debug)]
 pub enum Tag<'a> {
     Native(&'a str),
-    Mixin(&'a str),
+    /// Component or Custom element
+    Ext(&'a str),
     MemberExpr(&'a JSXMemberExpr),
 }
 
@@ -27,19 +32,31 @@ impl<'a> Tag<'a> {
     }
 }
 
-impl<'a> Parse<&'a JSXElementName> for Tag<'a> {
-    fn parse(element_name: &'a JSXElementName) -> Self {
-        match element_name {
+impl<'a> Transform<'a, Tag<'a>> for JSXElementName {
+    fn transform(&'a self) -> Tag<'a> {
+        match self {
             JSXElementName::Ident(ident) => {
-                match &*ident.sym {
-                    name if is_native_tag(name) => Self::Native(name),
-                    name => Self::Mixin(name),
+                match ident.as_ref() {
+                    name if is_native_tag(name) => Tag::Native(name),
+                    name => Tag::Ext(name),
                 }
             },
-            JSXElementName::JSXMemberExpr(member_expr) => Self::MemberExpr(member_expr),
+            JSXElementName::JSXMemberExpr(member_expr) => Tag::MemberExpr(member_expr),
             JSXElementName::JSXNamespacedName(_) => {
                 panic!("Tag.parse(): JSXNamespacedName Element is not supported")
             },
+        }
+    }
+}
+
+impl<'a, 's> Convert<'s, Expr> for Tag<'a> {
+    fn convert<S: State<'s>>(&self, state: &mut S) -> Expr {
+        match self {
+            Self::Native(name) => string_lit_expr(name),
+            Self::Ext(name) => {
+                todo!()
+            },
+            Self::MemberExpr(member_expr) => todo!(),
         }
     }
 }
@@ -50,8 +67,14 @@ impl<'a> Parse<&'a JSXElementName> for Tag<'a> {
 #[derive(Debug)]
 pub struct Element<'a> {
     pub tag: Tag<'a>,
-    pub props: Vec<Prop<'a>>,
+    pub prop_store: PropStore<'a>,
     pub children: Vec<VNode<'a>>,
+
+    pub raw: &'a JSXElement,
+
+    pub patch_flag: isize,
+    pub is_const_props: bool,
+    pub is_static: bool,
 }
 
 impl<'a> Element<'a> {
@@ -61,72 +84,65 @@ impl<'a> Element<'a> {
     //     }
     // }
 
-    pub fn analyze<S: State>(&mut self, state: &S) {
-        println!("{:?}", self.patch_flag());
-    }
-
-    pub fn patch_flag(&self) -> isize {
-        let mut flag = 0isize;
-
-        let mut need_patch = false;
-        let mut hydrate_event = false;
-        let mut has_patch_attr = false;
-
-        for Prop { key, value } in &self.props {
-            if matches!(key, Key::Directive(_)) {
-                need_patch = true;
-                continue;
-            }
-
-            if value.is_dyn_expr() {
-                match key {
-                    Key::Spread => return PatchFlag::FULL_PROPS,
-                    Key::Spec(REF) => need_patch = true,
-                    Key::Spec(CLASS) => flag |= PatchFlag::CLASS,
-                    Key::Spec(STYLE) => flag |= PatchFlag::STYLE,
-                    Key::Event(_) => hydrate_event = true,
-                    Key::Attr(_) | Key::NSAttr(_) => has_patch_attr = true,
-                    _ => {},
-                }
-            }
-        }
-
-        if hydrate_event {
-            flag |= PatchFlag::HYDRATE_EVENTS
-        }
-
-        if has_patch_attr {
-            flag |= PatchFlag::PROPS
-        }
-
-        if PatchFlag::is_non_prop(&flag) && need_patch {
-            flag |= PatchFlag::NEED_PATCH
-        }
-
-        flag
+    // TODO: static custom element tag
+    pub fn is_static(is_const_props: bool, tag: &Tag, children: &[VNode]) -> bool {
+        is_const_props && tag.is_native() && children.iter().all(VNode::is_static)
     }
 }
 
-impl<'a> Parse<&'a JSXElement> for Element<'a> {
-    fn parse(element: &'a JSXElement) -> Self {
-        let JSXElement {
+impl<'a> Transform<'a, Element<'a>> for JSXElement {
+    fn transform(&'a self) -> Element<'a> {
+        let Self {
             opening, children, ..
-        } = element;
+        } = self;
 
-        let tag = Tag::parse(&opening.name);
+        let tag = opening.name.transform();
 
-        let props = Vec::<Prop>::parse(&opening.attrs);
+        let prop_store = opening.attrs.transform();
 
-        let children = children
-            .iter()
-            .map(|child| VNode::parse(child))
-            .filter(|vnode| !vnode.is_empty_text())
-            .collect();
+        let children: Vec<VNode> = children.iter().filter_map(Transform::transform).collect();
 
-        Self {
+        let (patch_flag, is_const_props) = prop_store.inform();
+
+        let is_static = Element::is_static(is_const_props, &tag, &children);
+
+        Element {
             tag,
-            props,
+            prop_store,
             children,
+            raw: self,
+
+            patch_flag,
+            is_const_props,
+            is_static,
         }
+    }
+}
+
+impl<'a, 's> Convert<'s, Expr> for Element<'a> {
+    fn convert<S: State<'s>>(&self, state: &mut S) -> Expr {
+        println!("{:?}", self.tag);
+        println!("{:#?}", self.prop_store);
+        println!("patch_flag:{:?}", self.patch_flag);
+        println!("is_const_props:{:?}", self.is_const_props);
+        println!("is_static:{:?}", self.is_static);
+
+        let Self {
+            tag, prop_store, ..
+        } = self;
+
+        let tag_arg = tag.convert(state).as_arg();
+
+        let prop_obj = prop_store.convert(state);
+        // TODO: spreads, models, directives
+        //       dynamic key
+
+        // if spreads.is_empty() {
+        //     Expr::Object(prop_obj)
+        // } else {
+        //     create_merge_props(spreads, prop_obj, state)
+        // }
+
+        create_vnode_expr(vec![tag_arg, prop_arg], state)
     }
 }

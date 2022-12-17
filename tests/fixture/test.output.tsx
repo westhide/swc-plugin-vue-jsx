@@ -1,7 +1,6 @@
-import { ref } from "./a";
-import { a as a1, c } from "./a";
-{
-    const a11 = 1;
-}
+// comment debug
+import { mergeProps, create_vnode } from "vue";
 
-const tmpl = <div v:model={""}></div>
+const tmpl = create_vnode("div", mergeProps(b, c, {
+    onClickl: a
+}));

@@ -1,4 +1,11 @@
 use phf::{phf_set, Set};
+use swc_core::{
+    common::{util::take::Take, DUMMY_SP},
+    ecma::{
+        ast::{Expr, Ident, Lit, PropName, Str},
+        atoms::{js_word, JsWord},
+    },
+};
 
 /// ### VNode Prop [Key]
 pub const REF: &str = "ref";
@@ -11,17 +18,33 @@ pub const TEXT_CONTENT: &str = "textContent";
 pub const INNER_HTML: &str = "innerHTML";
 pub const MODEL: &str = "model";
 
+const JSW_KEY: JsWord = js_word!("key");
+const JSW_CLASS: JsWord = js_word!("class");
+const JSW_STYLE: JsWord = js_word!("style");
+
+pub const PROP_NAME_KEY: PropName = PropName::Ident(Ident::new(JSW_KEY, DUMMY_SP));
+pub const PROP_NAME_CLASS: PropName = PropName::Ident(Ident::new(JSW_CLASS, DUMMY_SP));
+pub const PROP_NAME_STYLE: PropName = PropName::Ident(Ident::new(JSW_STYLE, DUMMY_SP));
+
+pub const EMPTY_STRING_LIT: Lit = Lit::Str(Str {
+    span: DUMMY_SP,
+    value: js_word!(""),
+    raw: None,
+});
+pub const EMPTY_STRING_EXPR: Expr = Expr::Lit(EMPTY_STRING_LIT);
+
 /// ## KEY WORD
 pub const JSX_HELPER_KEY: &str = "JSX_HELPER_KEY";
 pub const FRAGMENT: &str = "Fragment";
 pub const KEEP_ALIVE: &str = "KeepAlive";
 
 pub const EMPTY_STR: &str = "";
+pub const UNDEFINED: &str = "undefined";
 
-pub const V_MODEL_NATIVE_ELEMENT: [&str; 3] = ["input", "textarea", "select"];
+pub const V_MODEL_NATIVE_ELEMENT: &[&str; 3] = &["input", "textarea", "select"];
 
 /// ## [HTML ELEMENT](https://html.spec.whatwg.org/multipage/indices.html#elements-3)
-pub const HTML_ELEMENT: Set<&str> = phf_set! {
+pub const HTML_ELEMENT: &Set<&str> = &phf_set! {
     "a","abbr","address","area","article","aside","audio",
     "b","base","bdi","bdo","blockquote","body","br","button",
     "canvas","caption","cite","code","col","colgroup",
@@ -49,7 +72,7 @@ pub const HTML_ELEMENT: Set<&str> = phf_set! {
 };
 
 /// ## [SVG Element](https://svgwg.org/svg2-draft/eltindex.html)
-pub const SVG_ELEMENT: Set<&str> = phf_set! {
+pub const SVG_ELEMENT: &Set<&str> = &phf_set! {
     "a","animate","animateMotion","animateTransform","circle","clipPath",
     "defs","desc","discard","ellipse",
     "feBlend","feColorMatrix","feComponentTransfer","feComposite","feConvolveMatrix",
@@ -68,7 +91,7 @@ pub const SVG_ELEMENT: Set<&str> = phf_set! {
 
 /// ## [Boolean attributes](https://html.spec.whatwg.org/multipage/common-microsyntaxes.html#boolean-attributes)
 /// [Attributes](https://html.spec.whatwg.org/multipage/indices.html#attributes-3)
-pub const BOOLEAN_ATTRIBUTE: Set<&str> = phf_set! {
+pub const BOOLEAN_ATTRIBUTE: &Set<&str> = &phf_set! {
     "allowfullscreen","async","autofocus","autoplay",
     "checked","controls",
     "default","defer","disabled",

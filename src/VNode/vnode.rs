@@ -4,14 +4,14 @@ use swc_core::ecma::ast::{
 };
 
 use crate::{
-    constant::EMPTY_STR,
-    shared::{parse::Parse, state::State},
+    shared::{convert::Convert, state::State, transform::Transform},
+    utils::clean_jsx_text::clean_jsx_text,
     vnode::element::Element,
 };
 
 #[derive(Debug)]
 pub enum VNode<'a> {
-    Text(&'a str),
+    Text(String),
     Element(Box<Element<'a>>),
     Expr(&'a Expr),
     Spread(&'a Expr),
@@ -19,70 +19,81 @@ pub enum VNode<'a> {
 }
 
 impl<'a> VNode<'a> {
-    pub fn is_empty_text(&self) -> bool {
-        matches!(self, VNode::Text(EMPTY_STR))
-    }
-}
-
-impl<'a> VNode<'a> {
-    pub fn analyze<S: State>(&mut self, state: &'a S) {
-        match self {
-            Self::Element(elm) => elm.analyze(state),
-            _ => {
-                todo!()
-            },
+    pub fn is_static(vnode: &Self) -> bool {
+        match vnode {
+            VNode::Text(_) => true,
+            VNode::Element(box element) => element.is_static,
+            VNode::Expr(_) => false,
+            VNode::Spread(_) => false,
+            VNode::Fragment(fragment) => fragment.iter().all(VNode::is_static),
         }
     }
 }
 
-impl<'a> Parse<&'a JSXText> for VNode<'a> {
-    fn parse(jsx_text: &'a JSXText) -> Self {
-        Self::Text(jsx_text.value.trim())
+impl<'a> Transform<'a, Option<VNode<'a>>> for JSXText {
+    fn transform(&'a self) -> Option<VNode<'a>> {
+        let text = clean_jsx_text(&self.value);
+
+        if text.is_empty() {
+            None
+        } else {
+            Some(VNode::Text(text))
+        }
     }
 }
 
-impl<'a> Parse<&'a JSXElement> for VNode<'a> {
-    fn parse(element: &'a JSXElement) -> Self {
-        Self::Element(box Element::parse(element))
+impl<'a> Transform<'a, VNode<'a>> for JSXElement {
+    fn transform(&'a self) -> VNode<'a> {
+        VNode::Element(box self.transform())
     }
 }
 
-impl<'a> Parse<&'a JSXExprContainer> for VNode<'a> {
-    fn parse(container: &'a JSXExprContainer) -> Self {
-        match &container.expr {
+impl<'a> Transform<'a, VNode<'a>> for JSXExprContainer {
+    fn transform(&'a self) -> VNode<'a> {
+        match &self.expr {
             JSXExpr::JSXEmptyExpr(_) => panic!("JSXExprContainer can not empty"),
-            JSXExpr::Expr(expr) => Self::Expr(expr),
+            // TODO: specialize Expr::Lit
+            JSXExpr::Expr(expr) => VNode::Expr(expr),
         }
     }
 }
 
-impl<'a> Parse<&'a JSXSpreadChild> for VNode<'a> {
-    fn parse(spread_child: &'a JSXSpreadChild) -> Self {
-        Self::Spread(&spread_child.expr)
+impl<'a> Transform<'a, VNode<'a>> for JSXSpreadChild {
+    fn transform(&'a self) -> VNode<'a> {
+        VNode::Spread(&self.expr)
     }
 }
 
-impl<'a> Parse<&'a JSXFragment> for VNode<'a> {
-    fn parse(fragment: &'a JSXFragment) -> Self {
-        Self::Fragment(
-            fragment
-                .children
+impl<'a> Transform<'a, VNode<'a>> for JSXFragment {
+    fn transform(&'a self) -> VNode<'a> {
+        VNode::Fragment(
+            self.children
                 .iter()
-                .map(|child| Self::parse(child))
-                .filter(|vnode| !vnode.is_empty_text())
+                .filter_map(Transform::transform)
                 .collect(),
         )
     }
 }
 
-impl<'a> Parse<&'a JSXElementChild> for VNode<'a> {
-    fn parse(child: &'a JSXElementChild) -> Self {
-        match child {
-            JSXElementChild::JSXText(jsx_text) => Self::parse(jsx_text),
-            JSXElementChild::JSXExprContainer(container) => Self::parse(container),
-            JSXElementChild::JSXSpreadChild(spread_child) => Self::parse(spread_child),
-            JSXElementChild::JSXElement(box element) => Self::parse(element),
-            JSXElementChild::JSXFragment(fragment) => Self::parse(fragment),
+impl<'a> Transform<'a, Option<VNode<'a>>> for JSXElementChild {
+    fn transform(&'a self) -> Option<VNode<'a>> {
+        match self {
+            JSXElementChild::JSXText(jsx_text) => jsx_text.transform(),
+            JSXElementChild::JSXExprContainer(container) => Some(container.transform()),
+            JSXElementChild::JSXSpreadChild(spread_child) => Some(spread_child.transform()),
+            JSXElementChild::JSXElement(box element) => Some(element.transform()),
+            JSXElementChild::JSXFragment(fragment) => Some(fragment.transform()),
+        }
+    }
+}
+
+impl<'a, 's> Convert<'s, Expr> for VNode<'a> {
+    fn convert<S: State<'s>>(&self, state: &mut S) -> Expr {
+        match self {
+            Self::Element(element) => element.convert(state),
+            _ => {
+                todo!()
+            },
         }
     }
 }

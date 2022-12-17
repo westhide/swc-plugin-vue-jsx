@@ -1,5 +1,5 @@
 pub use vnode::VNode;
 
 mod element;
-mod props;
+pub mod prop;
 mod vnode;

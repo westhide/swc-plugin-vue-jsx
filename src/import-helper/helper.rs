@@ -11,23 +11,24 @@ use swc_core::{
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ImportHelper<'a> {
-    module: *mut Module,
-    /// HashMap<[path], HashMap<[name], [ident]>>
-    ///  - e.g.
-    /// import-helper { createVNode as _createVNode } from "vue" => <br>
-    /// HashMap<["vue"], HashMap<["createVNode"], ["_createVNode"]<sup>Ident</sup>>>
+    module: Option<*mut Module>,
+    /// HashMap<`path`, HashMap<`name`, `ident`>>
+    ///  - e.g., import-helper { createVNode as _createVNode } from "vue"
+    ///    - HashMap<"vue", HashMap<"createVNode", "_createVNode"<sup>[Ident]</sup>>>
     store: HashMap<&'a str, HashMap<&'a str, &'a Ident>>,
     /// Import Declaration should inject to Module
     injects: HashMap<&'a str, HashMap<&'a str, Ident>>,
 }
 
 impl<'a> ImportHelper<'a> {
-    pub fn new(module: *mut Module) -> Self {
-        let body = unsafe { &(*module).body };
+    pub fn init(&mut self, module: *mut Module) {
+        self.module = Some(module);
 
-        let mut store = HashMap::new();
+        let Self { store, .. } = self;
+
+        let body = unsafe { &(*module).body };
 
         body.iter().for_each(|item: &ModuleItem| {
             if let ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
@@ -41,25 +42,17 @@ impl<'a> ImportHelper<'a> {
                         local, imported, ..
                     }) = specifier
                     {
-                        match imported {
-                            Some(ModuleExportName::Ident(imported)) => {
-                                imports.insert(&*imported.sym, local);
-                            },
-                            None => {
-                                imports.insert(&*local.sym, local);
-                            },
-                            Some(ModuleExportName::Str(_)) => {},
-                        }
+                        let name = match imported {
+                            Some(ModuleExportName::Ident(imported)) => imported.as_ref(),
+                            Some(ModuleExportName::Str(imported)) => &*imported.value,
+                            None => local.as_ref(),
+                        };
+
+                        imports.insert(name, local);
                     }
                 })
             };
         });
-
-        ImportHelper {
-            module,
-            store,
-            injects: HashMap::new(),
-        }
     }
 
     pub fn get_or_insert(&mut self, name: &'a str, path: &'a str) -> &Ident {
@@ -75,14 +68,14 @@ impl<'a> ImportHelper<'a> {
         }
     }
 
-    pub fn import_decls(self) -> Vec<ModuleItem> {
+    fn import_decls(&mut self) -> Vec<ModuleItem> {
         self.injects
-            .into_iter()
-            .map(|(path, mapper)| {
+            .drain()
+            .map(|(path, mut mapper)| {
                 let import_decl = ImportDecl {
                     specifiers: mapper
-                        .into_values()
-                        .map(|local| {
+                        .drain()
+                        .map(|(_, local)| {
                             ImportSpecifier::Named(ImportNamedSpecifier {
                                 span: DUMMY_SP,
                                 local,
@@ -100,12 +93,12 @@ impl<'a> ImportHelper<'a> {
             .collect()
     }
 
-    pub fn inject_import_decls(self) {
+    pub fn inject_import_decls(&mut self) {
         if self.injects.is_empty() {
             return;
         }
 
-        let module = self.module;
+        let Some(module) = self.module else { panic!("Forbidden: inject_import_decls() before init ImportHelper") };
 
         let decls = self.import_decls();
 
