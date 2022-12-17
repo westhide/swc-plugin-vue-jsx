@@ -19,13 +19,13 @@ pub enum VNode<'a> {
 }
 
 impl<'a> VNode<'a> {
-    pub fn is_static(vnode: &Self) -> bool {
-        match vnode {
-            VNode::Text(_) => true,
-            VNode::Element(box element) => element.is_static,
-            VNode::Expr(_) => false,
-            VNode::Spread(_) => false,
-            VNode::Fragment(fragment) => fragment.iter().all(VNode::is_static),
+    pub fn is_static(&self) -> bool {
+        match self {
+            Self::Text(_) => true,
+            Self::Element(box element) => element.is_static,
+            Self::Expr(_) => false,
+            Self::Spread(_) => false,
+            Self::Fragment(fragment) => fragment.iter().all(VNode::is_static),
         }
     }
 }

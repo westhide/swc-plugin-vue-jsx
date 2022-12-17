@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use swc_core::{
     common::{util::take::Take, DUMMY_SP},
     ecma::{
@@ -19,7 +20,7 @@ pub struct ImportHelper<'a> {
     ///    - HashMap<"vue", HashMap<"createVNode", "_createVNode"<sup>[Ident]</sup>>>
     store: HashMap<&'a str, HashMap<&'a str, &'a Ident>>,
     /// Import Declaration should inject to Module
-    injects: HashMap<&'a str, HashMap<&'a str, Ident>>,
+    injects: IndexMap<&'a str, IndexMap<&'a str, Ident>>,
 }
 
 impl<'a> ImportHelper<'a> {
@@ -61,7 +62,7 @@ impl<'a> ImportHelper<'a> {
             None => {
                 self.injects
                     .entry(path)
-                    .or_insert(HashMap::new())
+                    .or_insert(IndexMap::new())
                     .entry(name)
                     .or_insert(private_ident!(name))
             },
@@ -70,11 +71,11 @@ impl<'a> ImportHelper<'a> {
 
     fn import_decls(&mut self) -> Vec<ModuleItem> {
         self.injects
-            .drain()
+            .drain(..)
             .map(|(path, mut mapper)| {
                 let import_decl = ImportDecl {
                     specifiers: mapper
-                        .drain()
+                        .drain(..)
                         .map(|(_, local)| {
                             ImportSpecifier::Named(ImportNamedSpecifier {
                                 span: DUMMY_SP,

@@ -1343,6 +1343,7 @@ dependencies = [
 name = "swc-plugin-vue-jsx"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
  "once_cell",
  "phf 0.11.1",
  "regex",

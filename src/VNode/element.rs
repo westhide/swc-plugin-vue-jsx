@@ -1,18 +1,15 @@
 use swc_core::{
-    common::util::take::Take,
+    common::{util::take::Take, DUMMY_SP},
     ecma::{
-        ast::{Expr, JSXElement, JSXElementName, JSXMemberExpr},
+        ast::{Expr, JSXElement, JSXElementName, JSXMemberExpr, Lit, ObjectLit},
         utils::ExprFactory,
     },
 };
 
 use crate::{
     shared::{convert::Convert, state::State, transform::Transform},
-    utils::{
-        ast::{create_vnode_expr, string_lit_expr},
-        pattern::is_native_tag,
-    },
-    vnode::{prop::PropStore, VNode},
+    utils::{ast::create_vnode_expr, pattern::is_native_tag},
+    vnode::{prop::VProp, VNode},
 };
 
 /// ## [Tag]
@@ -52,7 +49,7 @@ impl<'a> Transform<'a, Tag<'a>> for JSXElementName {
 impl<'a, 's> Convert<'s, Expr> for Tag<'a> {
     fn convert<S: State<'s>>(&self, state: &mut S) -> Expr {
         match self {
-            Self::Native(name) => string_lit_expr(name),
+            Self::Native(&ref name) => Lit::from(name).into(),
             Self::Ext(name) => {
                 todo!()
             },
@@ -67,13 +64,12 @@ impl<'a, 's> Convert<'s, Expr> for Tag<'a> {
 #[derive(Debug)]
 pub struct Element<'a> {
     pub tag: Tag<'a>,
-    pub prop_store: PropStore<'a>,
+    pub props: Vec<VProp<'a>>,
     pub children: Vec<VNode<'a>>,
 
     pub raw: &'a JSXElement,
 
     pub patch_flag: isize,
-    pub is_const_props: bool,
     pub is_static: bool,
 }
 
@@ -83,11 +79,6 @@ impl<'a> Element<'a> {
     //         panic!("v-model can only be used on <input>, <textarea> and <select> elements")
     //     }
     // }
-
-    // TODO: static custom element tag
-    pub fn is_static(is_const_props: bool, tag: &Tag, children: &[VNode]) -> bool {
-        is_const_props && tag.is_native() && children.iter().all(VNode::is_static)
-    }
 }
 
 impl<'a> Transform<'a, Element<'a>> for JSXElement {
@@ -98,22 +89,21 @@ impl<'a> Transform<'a, Element<'a>> for JSXElement {
 
         let tag = opening.name.transform();
 
-        let prop_store = opening.attrs.transform();
+        let props = opening.attrs.transform();
 
         let children: Vec<VNode> = children.iter().filter_map(Transform::transform).collect();
 
-        let (patch_flag, is_const_props) = prop_store.inform();
-
-        let is_static = Element::is_static(is_const_props, &tag, &children);
+        let is_static = tag.is_native()
+            && props.iter().all(VProp::is_static)
+            && children.iter().all(VNode::is_static);
 
         Element {
             tag,
-            prop_store,
+            props,
             children,
             raw: self,
 
-            patch_flag,
-            is_const_props,
+            patch_flag: 0,
             is_static,
         }
     }
@@ -122,18 +112,20 @@ impl<'a> Transform<'a, Element<'a>> for JSXElement {
 impl<'a, 's> Convert<'s, Expr> for Element<'a> {
     fn convert<S: State<'s>>(&self, state: &mut S) -> Expr {
         println!("{:?}", self.tag);
-        println!("{:#?}", self.prop_store);
+        println!("{:#?}", self.props);
         println!("patch_flag:{:?}", self.patch_flag);
-        println!("is_const_props:{:?}", self.is_const_props);
         println!("is_static:{:?}", self.is_static);
 
-        let Self {
-            tag, prop_store, ..
-        } = self;
+        let Self { tag, props, .. } = self;
 
         let tag_arg = tag.convert(state).as_arg();
 
-        let prop_obj = prop_store.convert(state);
+        let prop_arg = ObjectLit {
+            span: DUMMY_SP,
+            props: props.convert(state),
+        }
+        .as_arg();
+
         // TODO: spreads, models, directives
         //       dynamic key
 

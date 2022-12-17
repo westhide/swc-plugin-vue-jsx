@@ -2,17 +2,16 @@ use swc_core::{
     common::DUMMY_SP,
     ecma::{
         ast::{
-            ArrayLit, CallExpr, Expr, ExprOrSpread, Ident, KeyValueProp, Lit, ObjectLit, Prop,
+            ArrayLit, CallExpr, Expr, ExprOrSpread, Ident, KeyValueProp, ObjectLit, Prop,
             PropOrSpread, SeqExpr,
         },
-        utils::{quote_ident, ExprFactory},
+        utils::ExprFactory,
     },
 };
 
 use crate::{
     constant::UNDEFINED,
     shared::{convert::Convert, state::State},
-    vnode::prop::Value,
 };
 
 pub fn is_undefined_ident(ident: &Ident) -> bool {
@@ -53,10 +52,6 @@ pub fn is_constant_expr(expr: &Expr) -> bool {
     }
 }
 
-pub fn string_lit_expr(text: &str) -> Expr {
-    Expr::Lit(Lit::from(text))
-}
-
 pub fn create_vnode_expr<'s, S: State<'s>>(args: Vec<ExprOrSpread>, state: &mut S) -> Expr {
     let callee = state.get_vue_import("create_vnode").clone().as_callee();
 
@@ -66,18 +61,6 @@ pub fn create_vnode_expr<'s, S: State<'s>>(args: Vec<ExprOrSpread>, state: &mut 
         args,
         type_args: None,
     })
-}
-
-pub fn key_value_prop<'a, 's, S: State<'s>>(
-    name: String,
-    value: &Value<'a>,
-    state: &mut S,
-) -> PropOrSpread {
-    Prop::KeyValue(KeyValueProp {
-        key: quote_ident!(name).into(),
-        value: box value.convert(state),
-    })
-    .into()
 }
 
 pub fn create_merge_props<'s, S: State<'s>>(

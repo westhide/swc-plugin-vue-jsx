@@ -1,4 +1,4 @@
 // comment debug
 
-const tmpl = <div on:clickl={a} {...b} {...c}></div>
+const tmpl = <div on:clickl={"a"}></div>
 

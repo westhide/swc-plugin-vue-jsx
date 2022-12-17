@@ -1,25 +1,23 @@
-use regex::internal::Input;
 use swc_core::{
-    common::DUMMY_SP,
     ecma::{
         ast::{
             Expr, Ident, JSXAttr, JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXExpr,
-            JSXNamespacedName, KeyValueProp, Lit, ObjectLit, Prop, PropName, PropOrSpread,
-            SpreadElement,
+            JSXNamespacedName, KeyValueProp, Lit, Prop, PropName, PropOrSpread, SpreadElement, Str,
         },
         utils::quote_ident,
     },
+    quote,
 };
 
 use crate::{
     constant::{
-        CLASS, EMPTY_STR, EMPTY_STRING_EXPR, INNER_HTML, KEY, MODEL, ON_CLICK, PROP_NAME_CLASS,
-        PROP_NAME_KEY, PROP_NAME_STYLE, REF, STYLE, TEXT_CONTENT,
+        CLASS, EMPTY_STR, EMPTY_STRING_EXPR, INNER_HTML, KEY, MODEL_VALUE, ON_CLICK,
+        PROP_NAME_CLASS, PROP_NAME_KEY, PROP_NAME_STYLE, REF, STYLE, TEXT_CONTENT,
     },
     patch_flag::PatchFlag,
     shared::{convert::Convert, state::State, transform::Transform},
     utils::{
-        ast::{is_constant_expr, key_value_prop},
+        ast::is_constant_expr,
         pattern::{is_bool_attr, is_directive, is_event},
     },
     vnode::VNode,
@@ -31,7 +29,7 @@ use crate::{
 #[derive(Debug)]
 pub enum Value<'a> {
     Lit(&'a Lit),
-    /// TODO: not strict, [is_constant_expr] check may loose
+    /// TODO: [is_constant_expr] Non-strict
     Const(&'a Expr),
     Expr(&'a Expr),
     VNode(Box<VNode<'a>>),
@@ -48,6 +46,10 @@ impl<'a> Value<'a> {
 
     fn is_dyn(value: &Value<'a>) -> bool {
         matches!(value, Self::Expr(_) | Self::VNode(_))
+    }
+
+    fn is_static(&self) -> bool {
+        matches!(self, Self::Lit(_) | Self::Const(_))
     }
 }
 
@@ -80,271 +82,239 @@ impl<'a, 's> Convert<'s, Expr> for Value<'a> {
     }
 }
 
-/// ## [PropStore]
+/// ## [VProp]
 /// - dynamic attribute is terrible for compiler optimize
 ///   - [TransformOn](https://github.com/vuejs/babel-plugin-jsx/blob/dev/packages/babel-helper-vue-transform-on/README.md) Event no more support in Vue JSX
 ///   - [Spread Attribute](Key::Spread) not recommend to use for better static optimize
 /// ---
-#[derive(Debug, Default)]
-pub struct PropStore<'a> {
+#[derive(Debug)]
+pub enum VProp<'a> {
     /// special Attribute
     /// - [REF], [KEY], [CLASS], [STYLE],
-    r#ref: Option<Value<'a>>,
-    key: Option<Value<'a>>,
-    class: Option<Value<'a>>,
-    style: Option<Value<'a>>,
+    Ref(Value<'a>),
+    Key(Value<'a>),
+    Class(Value<'a>),
+    Style(Value<'a>),
     /// [ON_CLICK]
     /// - `onClick`, `on:click`
-    on_click: Option<Value<'a>>,
+    OnClick(Value<'a>),
     /// [MODEL]
-    /// - `v-model`, `v:model`
-    models: Vec<(Value<'a>, Option<&'a str>)>,
-
-    events: Vec<(&'a str, Value<'a>)>,
-    directives: Vec<(&'a str, Value<'a>)>,
-
+    /// - `v-model`, `v:model`, `v-model:*`<sup>arg</sup>
+    Model {
+        expr: &'a Expr,
+        arg: Option<&'a str>,
+    },
+    Event(&'a str, Value<'a>),
+    Directive(&'a str, Value<'a>),
     /// - [TEXT_CONTENT] : `v-text`
     /// - [INNER_HTML] : `v-html`
-    attrs: Vec<(&'a str, Value<'a>)>,
-    ns_attrs: Vec<(&'a str, &'a str, Value<'a>)>,
-
-    bool_attrs: Vec<&'a Ident>,
-
-    spreads: Vec<&'a Expr>,
+    Attr(&'a str, Value<'a>),
+    NSAttr {
+        ns: &'a str,
+        name: &'a str,
+        value: Value<'a>,
+    },
+    BoolAttr(&'a Ident),
+    Spread(&'a Box<Expr>),
 }
 
-impl<'a> PropStore<'a> {
-    fn specialize_directive(&mut self, name: &'a str, value: Value<'a>) {
+impl<'a> VProp<'a> {
+    pub fn is_static(&self) -> bool {
+        match self {
+            Self::Ref(value)
+            | Self::Key(value)
+            | Self::Class(value)
+            | Self::Style(value)
+            | Self::OnClick(value)
+            | Self::Event(_, value)
+            | Self::Attr(_, value)
+            | Self::NSAttr { value, .. } => value.is_static(),
+            Self::Model { .. } | VProp::Directive(..) | VProp::Spread(_) => false,
+            Self::BoolAttr(_) => true,
+        }
+    }
+
+    fn v_model(value: Value<'a>, arg: Option<&'a str>) -> Self {
+        match value {
+            Value::Expr(expr) => Self::Model { expr, arg },
+            _ => panic!("v-model must have expr value"),
+        }
+    }
+
+    fn specialize_directive(name: &'a str, value: Value<'a>) -> Self {
         match name {
             EMPTY_STR => panic!("specialize_directive: directive name can not empty"),
-            "model" => self.models.push((value, None)),
-            "text" => self.attrs.push((TEXT_CONTENT, value)),
-            "html" => self.attrs.push((INNER_HTML, value)),
-            name => self.directives.push((name, value)),
+            "model" => Self::v_model(value, None),
+            "text" => Self::Attr(TEXT_CONTENT, value),
+            "html" => Self::Attr(INNER_HTML, value),
+            name => Self::Directive(name, value),
         }
     }
 
-    fn specialize_event(&mut self, name: &'a str, value: Value<'a>) {
+    fn specialize_event(name: &'a str, value: Value<'a>) -> Self {
         match name {
-            "click" => self.on_click = Some(value),
-            name => self.events.push((name, value)),
+            "click" => Self::OnClick(value),
+            name => Self::Event(name, value),
         }
     }
 
-    pub fn insert(&mut self, attr_name: &'a JSXAttrName, attr_value: &'a JSXAttrValue) {
+    fn from_attr(attr_name: &'a JSXAttrName, attr_value: &'a JSXAttrValue) -> Self {
         let value = attr_value.transform();
 
         match attr_name {
             JSXAttrName::Ident(ident) => {
                 match ident.as_ref() {
-                    REF => self.r#ref = Some(value),
-                    KEY => self.key = Some(value),
-                    CLASS => self.class = Some(value),
-                    STYLE => self.style = Some(value),
-                    ON_CLICK => self.on_click = Some(value),
-                    name if is_event(name) => self.events.push((&name[2..], value)),
-                    name if is_directive(name) => self.specialize_directive(&name[2..], value),
-                    name => self.attrs.push((name, value)),
+                    REF => Self::Ref(value),
+                    KEY => Self::Key(value),
+                    CLASS => Self::Class(value),
+                    STYLE => Self::Style(value),
+                    ON_CLICK => Self::OnClick(value),
+                    name if is_event(name) => Self::Event(&name[2..], value),
+                    name if is_directive(name) => Self::specialize_directive(&name[2..], value),
+                    name => Self::Attr(name, value),
                 }
             },
             JSXAttrName::JSXNamespacedName(JSXNamespacedName { ns, name }) => {
                 let name = name.as_ref();
 
                 match ns.as_ref() {
-                    "on" => self.specialize_event(name, value),
-                    "v" => self.specialize_directive(name, value),
-                    "v-model" => self.models.push((value, Some(name))),
-                    ns => self.ns_attrs.push((ns, name, value)),
+                    "on" => Self::specialize_event(name, value),
+                    "v" => Self::specialize_directive(name, value),
+                    "v-model" => Self::v_model(value, Some(name)),
+                    ns => Self::NSAttr { ns, name, value },
                 }
             },
-        };
+        }
     }
 }
 
-impl<'a> Transform<'a, PropStore<'a>> for [JSXAttrOrSpread] {
-    fn transform(&'a self) -> PropStore<'a> {
-        let mut store = PropStore::default();
-
-        self.iter().for_each(|prop_or_spread| {
-            match prop_or_spread {
-                JSXAttrOrSpread::JSXAttr(JSXAttr { name, value, .. }) => {
-                    match value.as_ref() {
-                        Some(attr_value) => {
-                            store.insert(name, attr_value)
-                        }
-                        None if let JSXAttrName::Ident(ident) = name && is_bool_attr(ident) => {
-                            store.bool_attrs.push(ident)
-                        },
-                        None => panic!("JSXAttr can not empty")
+impl<'a> Transform<'a, VProp<'a>> for JSXAttrOrSpread {
+    fn transform(&'a self) -> VProp<'a> {
+        match self {
+            JSXAttrOrSpread::JSXAttr(JSXAttr { name, value, .. }) => {
+                match value.as_ref() {
+                    Some(attr_value) => {
+                        VProp::from_attr(name, attr_value)
                     }
-                },
-                JSXAttrOrSpread::SpreadElement(SpreadElement { expr, .. }) => {
-                    store.spreads.push(expr)
-                },
-            };
-        });
-
-        store
+                    None if let JSXAttrName::Ident(ident) = name && is_bool_attr(ident) => {
+                        VProp::BoolAttr(ident)
+                    },
+                    None => panic!("JSXAttr can not empty")
+                }
+            },
+            JSXAttrOrSpread::SpreadElement(SpreadElement { expr, .. }) => VProp::Spread(expr),
+        }
     }
 }
 
-trait TryPushProp<V> {
-    fn try_push<'s, S: State<'s>>(&mut self, name: PropName, value: &V, state: &mut S);
-}
-
-impl<'a> TryPushProp<Option<Value<'a>>> for Vec<PropOrSpread> {
-    fn try_push<'s, S: State<'s>>(
-        &mut self,
-        key: PropName,
-        value: &Option<Value<'a>>,
-        state: &mut S,
-    ) {
-        if let Some(value) = value {
-            self.push(
-                Prop::KeyValue(KeyValueProp {
-                    key,
+// (,directives,kv_props,dynamic key)
+impl<'a, 's> Convert<'s, PropOrSpread> for VProp<'a> {
+    fn convert<S: State<'s>>(&self, state: &mut S) -> PropOrSpread {
+        let kv = match self {
+            Self::Ref(value) => {
+                KeyValueProp {
+                    key: quote_ident!(REF).into(),
                     value: box value.convert(state),
-                })
-                .into(),
-            );
-        }
-    }
-}
+                }
+            },
+            Self::Key(value) => {
+                KeyValueProp {
+                    key: PROP_NAME_KEY,
+                    value: box value.convert(state),
+                }
+            },
+            Self::Class(value) => {
+                KeyValueProp {
+                    key: PROP_NAME_CLASS,
+                    value: box value.convert(state),
+                }
+            },
+            Self::Style(value) => {
+                KeyValueProp {
+                    key: PROP_NAME_STYLE,
+                    value: box value.convert(state),
+                }
+            },
+            Self::OnClick(value) => {
+                KeyValueProp {
+                    key: quote_ident!(ON_CLICK).into(),
+                    value: box value.convert(state),
+                }
+            },
+            Self::Model { expr, arg } => {
+                let arg = arg.unwrap_or_else(|| MODEL_VALUE);
 
-impl<'a, 's> Convert<'s, Expr> for PropStore<'a> {
-    fn convert<S: State<'s>>(&self, state: &mut S) -> ObjectLit {
-        let mut props: Vec<PropOrSpread> = Vec::new();
+                let update_name = format!("onUpdate:{arg}");
+                let key = PropName::Str(Str::from(update_name));
 
-        let Self {
-            r#ref,
-            key,
-            class,
-            style,
-            on_click,
-            events,
-            attrs,
-            ns_attrs,
-            bool_attrs,
-            spreads,
-            ..
-        } = self;
+                let listener = quote!("e=>e=$expr" as Expr, expr: Expr = (*expr).clone());
 
-        props.try_push(quote_ident!(REF).into(), r#ref, state);
-        props.try_push(PROP_NAME_KEY, key, state);
-        props.try_push(PROP_NAME_CLASS, class, state);
-        props.try_push(PROP_NAME_STYLE, style, state);
-        props.try_push(quote_ident!(ON_CLICK).into(), on_click, state);
-
-        // props.try_push(quote_ident!(MODEL).into(), model, state);
-        // props.extend(model.iter.map(|(d, ..)| {}));
-
-        props.extend(events.iter().map(|(&ref name, value)| {
-            let event_name = format!("on{}{}", name[..1].to_uppercase(), &name[1..]);
-            key_value_prop(event_name, value, state)
-        }));
-
-        props.extend(attrs.iter().map(|(&ref name, value)| {
-            let attr_name = name.to_string();
-            key_value_prop(attr_name, value, state)
-        }));
-
-        props.extend(ns_attrs.iter().map(|(&ref ns, &ref name, value)| {
-            key_value_prop(format!("{ns}:{name}"), value, state)
-        }));
-
-        props.extend(bool_attrs.iter().map(|&ident| {
-            Prop::KeyValue(KeyValueProp {
-                key: ident.clone().into(),
-                value: box EMPTY_STRING_EXPR,
-            })
-            .into()
-        }));
-
-        let prop_obj = ObjectLit {
-            span: DUMMY_SP,
-            props,
+                KeyValueProp {
+                    key,
+                    value: box listener,
+                }
+            },
+            Self::Event(name, value) => {
+                let event_name = format!("on{}{}", name[..1].to_uppercase(), &name[1..]);
+                KeyValueProp {
+                    key: quote_ident!(event_name).into(),
+                    value: box value.convert(state),
+                }
+            },
+            Self::Directive(name, value) => {
+                todo!()
+            },
+            Self::Attr(&ref name, value) => {
+                KeyValueProp {
+                    key: quote_ident!(name).into(),
+                    value: box value.convert(state),
+                }
+            },
+            Self::NSAttr { ns, name, value } => {
+                let ns_name = format!("{ns}:{name}");
+                KeyValueProp {
+                    key: quote_ident!(ns_name).into(),
+                    value: box value.convert(state),
+                }
+            },
+            Self::BoolAttr(&ref ident) => {
+                KeyValueProp {
+                    key: ident.clone().into(),
+                    value: box EMPTY_STRING_EXPR,
+                }
+            },
+            Self::Spread(expr) => {
+                todo!()
+            },
         };
+
+        Prop::KeyValue(kv).into()
     }
 }
 
-/// ### [Props] [Inform](Props::inform)
-///
-/// ---
-pub trait IsPatch {
-    fn is_patch(&self) -> bool;
-}
+/// [PatchFlag]
+pub fn patch_flag(props: &[VProp]) -> isize {
+    let mut flag = 0isize;
 
-impl<'a> IsPatch for Option<Value<'a>> {
-    fn is_patch(&self) -> bool {
-        self.as_ref().is_some_and(Value::is_dyn)
-    }
-}
+    let mut need_patch = false;
 
-impl<'a> IsPatch for [(&'a str, Value<'a>)] {
-    fn is_patch(&self) -> bool {
-        self.iter().any(|(_, value)| Value::is_dyn(value))
-    }
-}
+    props.iter().for_each(|prop: &VProp| {
+        match prop {
+            VProp::Class(value) if Value::is_dyn(value) => flag |= PatchFlag::CLASS,
+            VProp::Style(value) if Value::is_dyn(value) => flag |= PatchFlag::STYLE,
+            VProp::Event(_, value) if Value::is_dyn(value) => flag |= PatchFlag::HYDRATE_EVENTS,
+            VProp::Attr(_, value) | VProp::NSAttr { value, .. } if Value::is_dyn(value) => {
+                flag |= PatchFlag::PROPS
+            },
+            VProp::Ref(_) | VProp::Model { .. } | VProp::Directive(..) => need_patch = true,
+            VProp::Spread(_) => flag |= PatchFlag::FULL_PROPS,
+            _ => {},
+        }
+    });
 
-impl<'a> IsPatch for [(&'a str, &'a str, Value<'a>)] {
-    fn is_patch(&self) -> bool {
-        self.iter().any(|(.., value)| Value::is_dyn(value))
-    }
-}
-
-impl<'a> PropStore<'a> {
-    fn need_patch(&self) -> bool {
-        let Self {
-            r#ref,
-            models,
-            directives,
-            ..
-        } = self;
-
-        r#ref.is_some() || !models.is_empty() || !directives.is_empty()
+    if PatchFlag::is_non_prop(&flag) && need_patch {
+        flag |= PatchFlag::NEED_PATCH
     }
 
-    /// - Return: ( patch_flag<sup>[PatchFlag]</sup>, is_const<sup>bool</sup>)
-    pub fn inform(&self) -> (isize, bool) {
-        if !self.spreads.is_empty() {
-            return (PatchFlag::FULL_PROPS, false);
-        }
-
-        let mut flag = 0isize;
-
-        let Self {
-            key,
-            class,
-            style,
-            on_click,
-            events,
-            attrs,
-            ns_attrs,
-            ..
-        } = self;
-
-        if class.is_patch() {
-            flag |= PatchFlag::CLASS
-        }
-
-        if style.is_patch() {
-            flag |= PatchFlag::STYLE
-        }
-
-        if events.is_patch() {
-            flag |= PatchFlag::HYDRATE_EVENTS
-        }
-
-        if attrs.is_patch() || ns_attrs.is_patch() {
-            flag |= PatchFlag::PROPS
-        }
-
-        if PatchFlag::is_non_prop(&flag) && self.need_patch() {
-            flag |= PatchFlag::NEED_PATCH
-        }
-
-        let is_const = flag == 0 && !key.is_patch() && !on_click.is_patch();
-
-        (flag, is_const)
-    }
+    flag
 }
