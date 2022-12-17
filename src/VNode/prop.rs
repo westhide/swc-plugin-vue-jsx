@@ -1,12 +1,13 @@
 use swc_core::{
+    common::{util::take::Take, DUMMY_SP},
     ecma::{
         ast::{
-            Expr, Ident, JSXAttr, JSXAttrName, JSXAttrOrSpread, JSXAttrValue, JSXExpr,
-            JSXNamespacedName, KeyValueProp, Lit, Prop, PropName, PropOrSpread, SpreadElement, Str,
+            ArrowExpr, AssignExpr, AssignOp, Expr, Ident, JSXAttr, JSXAttrName, JSXAttrOrSpread,
+            JSXAttrValue, JSXExpr, JSXNamespacedName, KeyValueProp, Lit, Prop, PropName,
+            PropOrSpread, SpreadElement, Str,
         },
-        utils::quote_ident,
+        utils::{private_ident, quote_ident, ExprFactory},
     },
-    quote,
 };
 
 use crate::{
@@ -44,12 +45,8 @@ impl<'a> Value<'a> {
         }
     }
 
-    fn is_dyn(value: &Value<'a>) -> bool {
-        matches!(value, Self::Expr(_) | Self::VNode(_))
-    }
-
-    fn is_static(&self) -> bool {
-        matches!(self, Self::Lit(_) | Self::Const(_))
+    fn is_dyn(&self) -> bool {
+        matches!(self, Self::Expr(_) | Self::VNode(_))
     }
 }
 
@@ -88,7 +85,7 @@ impl<'a, 's> Convert<'s, Expr> for Value<'a> {
 ///   - [Spread Attribute](Key::Spread) not recommend to use for better static optimize
 /// ---
 #[derive(Debug)]
-pub enum VProp<'a> {
+pub enum Attr<'a> {
     /// special Attribute
     /// - [REF], [KEY], [CLASS], [STYLE],
     Ref(Value<'a>),
@@ -115,25 +112,10 @@ pub enum VProp<'a> {
         value: Value<'a>,
     },
     BoolAttr(&'a Ident),
-    Spread(&'a Box<Expr>),
+    Spread(&'a Expr),
 }
 
-impl<'a> VProp<'a> {
-    pub fn is_static(&self) -> bool {
-        match self {
-            Self::Ref(value)
-            | Self::Key(value)
-            | Self::Class(value)
-            | Self::Style(value)
-            | Self::OnClick(value)
-            | Self::Event(_, value)
-            | Self::Attr(_, value)
-            | Self::NSAttr { value, .. } => value.is_static(),
-            Self::Model { .. } | VProp::Directive(..) | VProp::Spread(_) => false,
-            Self::BoolAttr(_) => true,
-        }
-    }
-
+impl<'a> Attr<'a> {
     fn v_model(value: Value<'a>, arg: Option<&'a str>) -> Self {
         match value {
             Value::Expr(expr) => Self::Model { expr, arg },
@@ -158,9 +140,7 @@ impl<'a> VProp<'a> {
         }
     }
 
-    fn from_attr(attr_name: &'a JSXAttrName, attr_value: &'a JSXAttrValue) -> Self {
-        let value = attr_value.transform();
-
+    fn from_attr(attr_name: &'a JSXAttrName, value: Value<'a>) -> Self {
         match attr_name {
             JSXAttrName::Ident(ident) => {
                 match ident.as_ref() {
@@ -188,21 +168,38 @@ impl<'a> VProp<'a> {
     }
 }
 
+#[derive(Debug)]
+pub struct VProp<'a> {
+    pub r#dyn: bool,
+    pub attr: Attr<'a>,
+}
+
 impl<'a> Transform<'a, VProp<'a>> for JSXAttrOrSpread {
     fn transform(&'a self) -> VProp<'a> {
         match self {
             JSXAttrOrSpread::JSXAttr(JSXAttr { name, value, .. }) => {
                 match value.as_ref() {
                     Some(attr_value) => {
-                        VProp::from_attr(name, attr_value)
+                        let value = attr_value.transform();
+                        let r#dyn = value.is_dyn();
+                        let attr = Attr::from_attr(name, value);
+                        VProp { r#dyn, attr }
                     }
                     None if let JSXAttrName::Ident(ident) = name && is_bool_attr(ident) => {
-                        VProp::BoolAttr(ident)
+                        VProp {
+                            r#dyn: false,
+                            attr: Attr::BoolAttr(ident)
+                        }
                     },
                     None => panic!("JSXAttr can not empty")
                 }
             },
-            JSXAttrOrSpread::SpreadElement(SpreadElement { expr, .. }) => VProp::Spread(expr),
+            JSXAttrOrSpread::SpreadElement(SpreadElement { expr, .. }) => {
+                VProp {
+                    r#dyn: false,
+                    attr: Attr::Spread(expr)
+                }
+            }
         }
     }
 }
@@ -210,85 +207,99 @@ impl<'a> Transform<'a, VProp<'a>> for JSXAttrOrSpread {
 // (,directives,kv_props,dynamic key)
 impl<'a, 's> Convert<'s, PropOrSpread> for VProp<'a> {
     fn convert<S: State<'s>>(&self, state: &mut S) -> PropOrSpread {
-        let kv = match self {
-            Self::Ref(value) => {
+        let Self { r#dyn, attr } = self;
+
+        let key_value_prop = match attr {
+            Attr::Ref(value) => {
                 KeyValueProp {
                     key: quote_ident!(REF).into(),
                     value: box value.convert(state),
                 }
             },
-            Self::Key(value) => {
+            Attr::Key(value) => {
                 KeyValueProp {
                     key: PROP_NAME_KEY,
                     value: box value.convert(state),
                 }
             },
-            Self::Class(value) => {
+            Attr::Class(value) => {
                 KeyValueProp {
                     key: PROP_NAME_CLASS,
                     value: box value.convert(state),
                 }
             },
-            Self::Style(value) => {
+            Attr::Style(value) => {
                 KeyValueProp {
                     key: PROP_NAME_STYLE,
                     value: box value.convert(state),
                 }
             },
-            Self::OnClick(value) => {
+            Attr::OnClick(value) => {
                 KeyValueProp {
                     key: quote_ident!(ON_CLICK).into(),
                     value: box value.convert(state),
                 }
             },
-            Self::Model { expr, arg } => {
+            Attr::Model { expr, arg } => {
                 let arg = arg.unwrap_or_else(|| MODEL_VALUE);
-
                 let update_name = format!("onUpdate:{arg}");
                 let key = PropName::Str(Str::from(update_name));
 
-                let listener = quote!("e=>e=$expr" as Expr, expr: Expr = (*expr).clone());
+                let ident = private_ident!("$v");
+
+                let listener: Box<Expr> = ArrowExpr {
+                    params: vec![ident.clone().into()],
+                    body: AssignExpr {
+                        span: DUMMY_SP,
+                        op: AssignOp::Assign,
+                        left: (*expr).clone().as_pat_or_expr(),
+                        right: box Expr::Ident(ident),
+                    }
+                    .into(),
+                    ..Take::dummy()
+                }
+                .into();
 
                 KeyValueProp {
                     key,
-                    value: box listener,
+                    value: listener,
                 }
             },
-            Self::Event(name, value) => {
+            Attr::Event(name, value) => {
                 let event_name = format!("on{}{}", name[..1].to_uppercase(), &name[1..]);
                 KeyValueProp {
                     key: quote_ident!(event_name).into(),
                     value: box value.convert(state),
                 }
             },
-            Self::Directive(name, value) => {
+            Attr::Directive(name, value) => {
                 todo!()
             },
-            Self::Attr(&ref name, value) => {
+            Attr::Attr(&ref name, value) => {
                 KeyValueProp {
                     key: quote_ident!(name).into(),
                     value: box value.convert(state),
                 }
             },
-            Self::NSAttr { ns, name, value } => {
+            Attr::NSAttr { ns, name, value } => {
                 let ns_name = format!("{ns}:{name}");
                 KeyValueProp {
                     key: quote_ident!(ns_name).into(),
                     value: box value.convert(state),
                 }
             },
-            Self::BoolAttr(&ref ident) => {
+            Attr::BoolAttr(&ref ident) => {
                 KeyValueProp {
                     key: ident.clone().into(),
                     value: box EMPTY_STRING_EXPR,
                 }
             },
-            Self::Spread(expr) => {
+            Attr::Spread(expr) => {
                 todo!()
             },
         };
 
-        Prop::KeyValue(kv).into()
+        Prop::KeyValue(key_value_prop).into()
     }
 }
 
@@ -298,16 +309,14 @@ pub fn patch_flag(props: &[VProp]) -> isize {
 
     let mut need_patch = false;
 
-    props.iter().for_each(|prop: &VProp| {
-        match prop {
-            VProp::Class(value) if Value::is_dyn(value) => flag |= PatchFlag::CLASS,
-            VProp::Style(value) if Value::is_dyn(value) => flag |= PatchFlag::STYLE,
-            VProp::Event(_, value) if Value::is_dyn(value) => flag |= PatchFlag::HYDRATE_EVENTS,
-            VProp::Attr(_, value) | VProp::NSAttr { value, .. } if Value::is_dyn(value) => {
-                flag |= PatchFlag::PROPS
-            },
-            VProp::Ref(_) | VProp::Model { .. } | VProp::Directive(..) => need_patch = true,
-            VProp::Spread(_) => flag |= PatchFlag::FULL_PROPS,
+    props.iter().for_each(|VProp { r#dyn, attr }: &VProp| {
+        match attr {
+            Attr::Class(_) if *r#dyn => flag |= PatchFlag::CLASS,
+            Attr::Style(_) if *r#dyn => flag |= PatchFlag::STYLE,
+            Attr::Event(..) if *r#dyn => flag |= PatchFlag::HYDRATE_EVENTS,
+            Attr::Attr(..) | Attr::NSAttr { .. } if *r#dyn => flag |= PatchFlag::PROPS,
+            Attr::Ref(_) | Attr::Model { .. } | Attr::Directive(..) => need_patch = true,
+            Attr::Spread(_) => flag |= PatchFlag::FULL_PROPS,
             _ => {},
         }
     });

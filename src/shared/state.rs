@@ -5,5 +5,5 @@ pub trait State<'s> {
 
     fn is_transform_on(&self) -> bool;
 
-    fn get_vue_import(&mut self, name: &'s str) -> &Ident;
+    fn import_from_vue(&mut self, name: &'s str) -> &Ident;
 }

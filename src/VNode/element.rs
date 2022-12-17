@@ -69,7 +69,6 @@ pub struct Element<'a> {
 
     pub raw: &'a JSXElement,
 
-    pub patch_flag: isize,
     pub is_static: bool,
 }
 
@@ -94,7 +93,7 @@ impl<'a> Transform<'a, Element<'a>> for JSXElement {
         let children: Vec<VNode> = children.iter().filter_map(Transform::transform).collect();
 
         let is_static = tag.is_native()
-            && props.iter().all(VProp::is_static)
+            && props.iter().all(|VProp { r#dyn, .. }| *r#dyn)
             && children.iter().all(VNode::is_static);
 
         Element {
@@ -103,7 +102,6 @@ impl<'a> Transform<'a, Element<'a>> for JSXElement {
             children,
             raw: self,
 
-            patch_flag: 0,
             is_static,
         }
     }
@@ -113,7 +111,6 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
     fn convert<S: State<'s>>(&self, state: &mut S) -> Expr {
         println!("{:?}", self.tag);
         println!("{:#?}", self.props);
-        println!("patch_flag:{:?}", self.patch_flag);
         println!("is_static:{:?}", self.is_static);
 
         let Self { tag, props, .. } = self;

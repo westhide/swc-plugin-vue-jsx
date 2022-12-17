@@ -1,4 +1,3 @@
 // comment debug
-
-const tmpl = <div on:clickl={"a"}></div>
+const tmpl = <div on:clickl={"a"} v-model={b}></div>
 

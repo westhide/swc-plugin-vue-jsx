@@ -85,7 +85,7 @@ impl<'s, C: Comments> State<'s> for VueJSX<'s, C> {
         self.opts.transform_on
     }
 
-    fn get_vue_import(&mut self, name: &'s str) -> &Ident {
+    fn import_from_vue(&mut self, name: &'s str) -> &Ident {
         self.import_helper.get_or_insert(name, "vue")
     }
 }

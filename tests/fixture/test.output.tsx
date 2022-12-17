@@ -2,6 +2,7 @@
 import {create_vnode} from "vue";
 
 const tmpl = create_vnode("div", {
-    onClickl: "a"
+    onClickl: "a",
+    "onUpdate:modelValue": ($v) => b = $v
 });
 

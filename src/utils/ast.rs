@@ -53,7 +53,7 @@ pub fn is_constant_expr(expr: &Expr) -> bool {
 }
 
 pub fn create_vnode_expr<'s, S: State<'s>>(args: Vec<ExprOrSpread>, state: &mut S) -> Expr {
-    let callee = state.get_vue_import("create_vnode").clone().as_callee();
+    let callee = state.import_from_vue("create_vnode").clone().as_callee();
 
     Expr::Call(CallExpr {
         span: DUMMY_SP,
@@ -64,11 +64,11 @@ pub fn create_vnode_expr<'s, S: State<'s>>(args: Vec<ExprOrSpread>, state: &mut 
 }
 
 pub fn create_merge_props<'s, S: State<'s>>(
-    spreads: &Vec<&Expr>,
+    spreads: &[&Expr],
     prop_obj: ObjectLit,
     state: &mut S,
 ) -> Expr {
-    let callee = state.get_vue_import("mergeProps").clone().as_callee();
+    let callee = state.import_from_vue("mergeProps").clone().as_callee();
 
     let mut args: Vec<ExprOrSpread> = spreads.iter().map(|&expr| expr.clone().into()).collect();
 
