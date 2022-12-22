@@ -1,10 +1,6 @@
 use serde::Deserialize;
 use swc_core::plugin::metadata::TransformPluginProgramMetadata as Metadata;
 
-fn default_true() -> bool {
-    true
-}
-
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct PluginOptions {
@@ -24,6 +20,17 @@ pub struct PluginOptions {
     pub enable_object_slots: bool,
     /// Replace the function used when compiling JSX expressions
     pub pragma: Option<String>,
+
+    #[serde(default = "default_static_vnode_threshold")]
+    pub static_vnode_threshold: usize,
+}
+
+const fn default_true() -> bool {
+    true
+}
+
+const fn default_static_vnode_threshold() -> usize {
+    5
 }
 
 impl From<&str> for PluginOptions {

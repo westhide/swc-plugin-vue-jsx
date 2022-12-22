@@ -2,7 +2,7 @@ use phf::{phf_set, Set};
 use swc_core::{
     common::{util::take::Take, DUMMY_SP},
     ecma::{
-        ast::{Expr, Ident, Lit, PropName, Str},
+        ast::{Expr, Ident, Lit, Null, PropName, Str},
         atoms::{js_word, JsWord},
     },
 };
@@ -19,9 +19,9 @@ pub const INNER_HTML: &str = "innerHTML";
 pub const MODEL: &str = "model";
 pub const MODEL_VALUE: &str = "modelValue";
 
-const JSW_KEY: JsWord = js_word!("key");
-const JSW_CLASS: JsWord = js_word!("class");
-const JSW_STYLE: JsWord = js_word!("style");
+pub const JSW_KEY: JsWord = js_word!("key");
+pub const JSW_CLASS: JsWord = js_word!("class");
+pub const JSW_STYLE: JsWord = js_word!("style");
 
 pub const PROP_NAME_KEY: PropName = PropName::Ident(Ident::new(JSW_KEY, DUMMY_SP));
 pub const PROP_NAME_CLASS: PropName = PropName::Ident(Ident::new(JSW_CLASS, DUMMY_SP));
@@ -33,6 +33,8 @@ pub const EMPTY_STRING_LIT: Lit = Lit::Str(Str {
     raw: None,
 });
 pub const EMPTY_STRING_EXPR: Expr = Expr::Lit(EMPTY_STRING_LIT);
+
+pub const NULL_EXPR: Expr = Expr::Lit(Lit::Null(Null { span: DUMMY_SP }));
 
 /// ## KEY WORD
 pub const JSX_HELPER_KEY: &str = "JSX_HELPER_KEY";

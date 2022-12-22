@@ -16,9 +16,4 @@ impl PatchFlag {
     pub const STYLE: isize = 1 << 2;
     pub const TEXT: isize = 1;
     pub const UN_KEYED_FRAGMENT: isize = 1 << 8;
-
-    pub fn is_non_prop(flag: &isize) -> bool {
-        // - 0b1_1_1_0 => Class_Style_Props_0
-        flag & 0b1110 == 0
-    }
 }

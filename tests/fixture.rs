@@ -5,7 +5,7 @@ use swc_core::{
     ecma::{
         parser::{Syntax, TsConfig},
         transforms::{
-            base::{hygiene::hygiene, resolver},
+            base::resolver,
             testing::{test, test_fixture},
         },
         visit::as_folder,
@@ -42,10 +42,10 @@ fn tsx_fixture(input: PathBuf) {
                 resolver(Mark::new(), Mark::new(), false),
                 as_folder(VueJSX::new(
                     opts,
-                    Some(tester.comments.clone()),
+                    Some(tester.comments.as_ref().clone()),
                     Mark::new()
                 )),
-                hygiene()
+                // hygiene()
             )
         },
         &input,

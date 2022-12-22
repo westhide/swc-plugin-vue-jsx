@@ -1,6 +1,5 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
-use swc_core::ecma::ast::Ident;
 
 use crate::{
     constant::{BOOLEAN_ATTRIBUTE, HTML_ELEMENT, SVG_ELEMENT, V_MODEL_NATIVE_ELEMENT},
@@ -33,6 +32,6 @@ pub fn is_native_v_model_tag(tag: &str) -> bool {
     V_MODEL_NATIVE_ELEMENT.contains(&tag)
 }
 
-pub fn is_bool_attr(ident: &Ident) -> bool {
-    BOOLEAN_ATTRIBUTE.contains(ident.as_ref())
+pub fn is_bool_attr(name: &str) -> bool {
+    BOOLEAN_ATTRIBUTE.contains(name)
 }

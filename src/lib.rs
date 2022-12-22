@@ -7,14 +7,11 @@
 // TODO: Debug only
 #![allow(unused)]
 #![feature(test)]
-// #![feature(associated_type_defaults)]
 
-extern crate core;
-
-use std::fmt::Debug;
+use std::collections::HashMap;
 
 pub use options::PluginOptions;
-use shared::state::State;
+use state::State;
 use swc_core::{
     common::{chain, comments::Comments, util::take::Take, Mark},
     ecma::{
@@ -26,17 +23,23 @@ use swc_core::{
 };
 
 use crate::{
+    hoist_helper::HoistHelper,
     import_helper::ImportHelper,
+    scope::Scope,
     shared::{convert::Convert, transform::Transform},
-    vnode::VNode,
+    vnode::{element::Element, VNode},
 };
 
 mod constant;
+#[path = "hoist-helper/mod.rs"]
+mod hoist_helper;
 #[path = "import-helper/mod.rs"]
 mod import_helper;
 mod options;
 mod patch_flag;
+mod scope;
 mod shared;
+mod state;
 mod utils;
 #[path = "VNode/mod.rs"]
 mod vnode;
@@ -63,6 +66,12 @@ pub struct VueJSX<'s, C: Comments> {
     unresolved_mark: Mark,
 
     import_helper: ImportHelper<'s>,
+
+    hoist_helper: HoistHelper,
+
+    private_idents: HashMap<&'s str, Ident>,
+
+    scope: Scope,
 }
 
 impl<'s, C: Comments> VueJSX<'s, C> {
@@ -72,21 +81,10 @@ impl<'s, C: Comments> VueJSX<'s, C> {
             comments,
             unresolved_mark,
             import_helper: ImportHelper::default(),
+            hoist_helper: HoistHelper::default(),
+            private_idents: HashMap::new(),
+            scope: Scope::default(),
         }
-    }
-}
-
-impl<'s, C: Comments> State<'s> for VueJSX<'s, C> {
-    fn is_custom_element(&self, text: &str) -> bool {
-        regex_set!(&self.opts.custom_element_patterns).is_match(text)
-    }
-
-    fn is_transform_on(&self) -> bool {
-        self.opts.transform_on
-    }
-
-    fn import_from_vue(&mut self, name: &'s str) -> &Ident {
-        self.import_helper.get_or_insert(name, "vue")
     }
 }
 
@@ -100,18 +98,23 @@ impl<'s, C: Comments> VisitMut for VueJSX<'s, C> {
 
         module.visit_mut_children_with(self);
 
-        self.import_helper.inject_import_decls();
+        self.import_helper.inject(module);
+        self.hoist_helper.inject(module)
     }
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         match &expr {
             Expr::JSXElement(box element) => {
-                let mut vnode: VNode = element.transform();
-                let vnode_expr = vnode.convert(self);
-                *expr = vnode_expr
+                let mut elm: Element = element.transform();
+
+                let elm_expr = elm.convert(self);
+
+                let render_expr = self.scope.create_render_expr(elm_expr);
+
+                *expr = render_expr
             },
             Expr::JSXFragment(fragment) => {
-                let mut vnode = fragment.transform();
+                let mut vnode: VNode = fragment.transform();
             },
             _ => {},
         }

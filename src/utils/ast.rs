@@ -1,19 +1,18 @@
 use swc_core::{
-    common::DUMMY_SP,
-    ecma::{
-        ast::{
-            ArrayLit, CallExpr, Expr, ExprOrSpread, Ident, KeyValueProp, ObjectLit, Prop,
-            PropOrSpread, SeqExpr,
-        },
-        utils::ExprFactory,
+    common::util::take::Take,
+    ecma::ast::{
+        ArrayLit, Expr, ExprOrSpread, Ident, KeyValueProp, ObjectLit, Prop, PropOrSpread, SeqExpr,
     },
 };
 
 use crate::{
     constant::UNDEFINED,
-    shared::{convert::Convert, state::State},
+    shared::{convert::Convert, transform::Transform},
 };
 
+/// ## Constant Expr
+///
+/// ---
 pub fn is_undefined_ident(ident: &Ident) -> bool {
     ident.as_ref() == UNDEFINED
 }
@@ -50,34 +49,4 @@ pub fn is_constant_expr(expr: &Expr) -> bool {
         Expr::Seq(SeqExpr { exprs, .. }) => exprs.iter().all(|expr| is_constant_expr(expr)),
         _ => false,
     }
-}
-
-pub fn create_vnode_expr<'s, S: State<'s>>(args: Vec<ExprOrSpread>, state: &mut S) -> Expr {
-    let callee = state.import_from_vue("create_vnode").clone().as_callee();
-
-    Expr::Call(CallExpr {
-        span: DUMMY_SP,
-        callee,
-        args,
-        type_args: None,
-    })
-}
-
-pub fn create_merge_props<'s, S: State<'s>>(
-    spreads: &[&Expr],
-    prop_obj: ObjectLit,
-    state: &mut S,
-) -> Expr {
-    let callee = state.import_from_vue("mergeProps").clone().as_callee();
-
-    let mut args: Vec<ExprOrSpread> = spreads.iter().map(|&expr| expr.clone().into()).collect();
-
-    args.push(prop_obj.as_arg());
-
-    Expr::Call(CallExpr {
-        span: DUMMY_SP,
-        callee,
-        args,
-        type_args: None,
-    })
 }
