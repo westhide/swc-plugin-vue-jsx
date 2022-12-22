@@ -73,9 +73,9 @@ impl<'a, 's> Convert<'s, Expr> for Text<'a> {
 
         let create_text_node = state.import_from_vue("createTextVNode");
 
-        let hoist_expr = create_text_node.as_call(DUMMY_SP, vec![content.clone().as_arg()]);
+        let expr = create_text_node.as_call(DUMMY_SP, vec![content.clone().as_arg()]);
 
-        state.hoist_expr(hoist_expr).into()
+        state.hoist_expr(expr).into()
     }
 }
 

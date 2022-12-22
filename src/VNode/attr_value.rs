@@ -42,7 +42,7 @@ impl<'a> Transform<'a, Value<'a>> for JSXAttrValue {
                 match &container.expr {
                     JSXExpr::Expr(expr) => Value::specialize_expr(expr),
                     JSXExpr::JSXEmptyExpr(_) => {
-                        panic!("JSXAttrValue::JSXExprContainer can not empty")
+                        panic!("Forbidden: Empty JSXExprContainer")
                     },
                 }
             },

@@ -1,7 +1,7 @@
-import { mergeProps, resolveComponent, createVNode, createTextVNode, Fragment, createStaticVNode } from "vue";
+import { mergeProps, resolveComponent, createVNode, createTextVNode, createStaticVNode } from "vue";
 const _hoisted_ = createTextVNode("123"), _hoisted_1 = [
     "frg"
-], _hoisted_2 = createStaticVNode("<span ></span><span ></span><span ></span><span ></span><div ></div><div ></div>", 7), _hoisted_3 = [
+], _hoisted_2 = createStaticVNode("<span ></span><span ></span><span ></span><span ></span><div ></div><div ></div>", 6), _hoisted_3 = [
     "clalang"
 ], _hoisted_4 = createVNode("div", null, null, -1);
 const tmpl = (()=>{
@@ -14,11 +14,9 @@ const tmpl = (()=>{
         _hoisted_,
         d,
         ...e,
-        createVNode(Fragment, null, [
-            createVNode("div", {
-                frg: _hoisted_4
-            }, null, 8, _hoisted_1)
-        ]),
+        createVNode("div", {
+            frg: _hoisted_4
+        }, null, 8, _hoisted_1),
         _hoisted_2
     ], 536, _hoisted_3);
 })();

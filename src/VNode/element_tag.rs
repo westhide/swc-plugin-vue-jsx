@@ -47,9 +47,7 @@ impl<'a> Transform<'a, Tag<'a>> for JSXElementName {
                 }
             },
             JSXElementName::JSXMemberExpr(member_expr) => Tag::MemberExpr(member_expr),
-            JSXElementName::JSXNamespacedName(_) => {
-                panic!("JSXElement: JSXNamespacedName Element is not supported")
-            },
+            JSXElementName::JSXNamespacedName(_) => panic!("Forbidden: JSXNamespacedName Element"),
         }
     }
 }
@@ -63,9 +61,7 @@ impl<'a, 's> Convert<'s, Expr> for Tag<'a> {
 
                 let resolve_expr = resolve_component.as_call(DUMMY_SP, vec![name.as_arg()]);
 
-                let resolve_tag = state.scope_expr(resolve_expr);
-
-                resolve_tag.into()
+                state.scope_expr(resolve_expr).into()
             },
             Self::MemberExpr(member_expr) => todo!(),
         }

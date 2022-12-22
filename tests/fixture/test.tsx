@@ -3,16 +3,12 @@ const tmpl = <div clalang={a} v-model={b} {...c}>
     123
     {d}
     {...e}
-    <>
-        <div frg={<div></div>}></div>
-    </>
+    <div frg={<div></div>}></div>
 
     <span></span>
     <span></span>
     <span></span>
     <span></span>
-    <>
-        <div></div>
-        <div></div>
-    </>
+    <div></div>
+    <div></div>
 </div>

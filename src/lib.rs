@@ -25,21 +25,21 @@ use swc_core::{
 use crate::{
     hoist_helper::HoistHelper,
     import_helper::ImportHelper,
-    scope::Scope,
+    scope_helper::ScopeHelper,
     shared::{convert::Convert, transform::Transform},
     vnode::{element::Element, VNode},
 };
 
 mod constant;
-#[path = "hoist-helper/mod.rs"]
 mod hoist_helper;
 #[path = "import-helper/mod.rs"]
 mod import_helper;
 mod options;
 mod patch_flag;
-mod scope;
+mod scope_helper;
 mod shared;
 mod state;
+mod static_vnode_helper;
 mod utils;
 #[path = "VNode/mod.rs"]
 mod vnode;
@@ -71,7 +71,7 @@ pub struct VueJSX<'s, C: Comments> {
 
     private_idents: HashMap<&'s str, Ident>,
 
-    scope: Scope,
+    scope: ScopeHelper,
 }
 
 impl<'s, C: Comments> VueJSX<'s, C> {
@@ -83,7 +83,7 @@ impl<'s, C: Comments> VueJSX<'s, C> {
             import_helper: ImportHelper::default(),
             hoist_helper: HoistHelper::default(),
             private_idents: HashMap::new(),
-            scope: Scope::default(),
+            scope: ScopeHelper::default(),
         }
     }
 }

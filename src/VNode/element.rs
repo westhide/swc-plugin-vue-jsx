@@ -153,7 +153,7 @@ fn create_element_node<'s, S: State<'s>>(
         args.push((patch_flag as f64).as_arg());
 
         if !dyn_keys.is_empty() {
-            let hoist_ident = state.hoist_expr(
+            let hoisted = state.hoist_expr(
                 ArrayLit {
                     span: DUMMY_SP,
                     elems: dyn_keys,
@@ -161,7 +161,7 @@ fn create_element_node<'s, S: State<'s>>(
                 .into(),
             );
 
-            args.push(hoist_ident.as_arg())
+            args.push(hoisted.as_arg())
         }
     }
 
@@ -197,7 +197,7 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
                     if is_dyn {
                         flag |= PatchFlag::NEED_PATCH
                     } else {
-                        panic!("JSXAttr: ref must have dynamic expr value")
+                        panic!("Forbidden: const ref value")
                     }
 
                     props.push_ident_prop(REF, value)
@@ -240,7 +240,7 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
                 },
                 Key::Model(arg) => {
                     if !is_dyn {
-                        panic!("JSXAttr: v-model must have dynamic expr value")
+                        panic!("Forbidden: const v-model value")
                     }
 
                     let arg = arg.unwrap_or_else(|| MODEL_VALUE);
@@ -317,7 +317,7 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
         // TODO: models, directives
 
         if *is_static {
-            let hoist_expr = create_element_node(
+            let expr = create_element_node(
                 tag_arg,
                 props_arg,
                 children_arg,
@@ -326,7 +326,7 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
                 state,
             );
 
-            state.hoist_expr(hoist_expr).into()
+            state.hoist_expr(expr).into()
         } else {
             create_element_node(tag_arg, props_arg, children_arg, flag, dyn_keys, state)
         }

@@ -13,6 +13,7 @@ use crate::{
     constant::NULL_EXPR,
     shared::{convert::Convert, transform::Transform},
     state::State,
+    static_vnode_helper::StaticVNodeHelper,
     utils::code_emitter::CodeEmitter,
     vnode::{element::Element, fragment::Fragment, text::Text},
 };
@@ -37,19 +38,14 @@ impl<'a> VNode<'a> {
         }
     }
 
-    pub fn stringify(&self, count: &mut usize) -> String {
+    pub fn content(&self) -> String {
         match self {
             Self::Text(text) => text.content.clone(),
             Self::Element(element) => CodeEmitter::emit(element.raw),
             Self::Fragment(box Fragment { children, .. }) => {
-                *count += children.len();
-
-                children
-                    .iter()
-                    .map(|child| child.stringify(count))
-                    .collect()
+                children.iter().map(VNode::content).collect()
             },
-            _ => panic!("can not stringify dyn vnode"),
+            _ => panic!("Error: Dynamic VNode content"),
         }
     }
 }
@@ -63,7 +59,7 @@ impl<'a> Transform<'a, VNode<'a>> for JSXElement {
 impl<'a> Transform<'a, VNode<'a>> for JSXExprContainer {
     fn transform(&'a self) -> VNode<'a> {
         match &self.expr {
-            JSXExpr::JSXEmptyExpr(_) => panic!("JSXExprContainer can not empty"),
+            JSXExpr::JSXEmptyExpr(_) => panic!("Forbidden: Empty JSXExprContainer"),
             JSXExpr::Expr(expr) => VNode::Expr(expr),
         }
     }
@@ -90,7 +86,9 @@ impl<'a> Transform<'a, Option<VNode<'a>>> for JSXElementChild {
             JSXElementChild::JSXExprContainer(container) => Some(container.transform()),
             JSXElementChild::JSXSpreadChild(spread_child) => Some(spread_child.transform()),
             JSXElementChild::JSXElement(box element) => Some(element.transform()),
-            JSXElementChild::JSXFragment(fragment) => Some(fragment.transform()),
+            JSXElementChild::JSXFragment(_) => {
+                panic!("Forbidden: JSXFragment as JSXElementChild")
+            },
         }
     }
 }
@@ -118,52 +116,25 @@ impl<'a, 's> Convert<'s, ExprOrSpread> for VNode<'a> {
     }
 }
 
-fn stringify_static<'s, S: State<'s>>(
-    elems: &mut Vec<Option<ExprOrSpread>>,
-    static_nodes: &mut Vec<&VNode>,
-    state: &mut S,
-) {
-    let mut count = static_nodes.len();
-    if count >= state.static_vnode_threshold() {
-        let inner_html: String = static_nodes
-            .iter()
-            .map(|vnode| vnode.stringify(&mut count))
-            .collect();
-
-        let static_vnode = state.import_from_vue("createStaticVNode");
-
-        let hoist_expr = static_vnode.as_call(DUMMY_SP, vec![inner_html.as_arg(), count.as_arg()]);
-
-        elems.push(Some(state.hoist_expr(hoist_expr).as_arg()))
-    } else {
-        elems.extend(static_nodes.iter().map(|vnode| Some(vnode.convert(state))));
-    }
-
-    static_nodes.truncate(0)
-}
-
 impl<'a, 's> Convert<'s, Expr> for [VNode<'a>] {
     fn convert<S: State<'s>>(&self, state: &mut S) -> Expr {
         if self.is_empty() {
             NULL_EXPR
         } else {
-            let static_threshold = state.static_vnode_threshold();
+            let mut static_nodes = StaticVNodeHelper::new(state.static_threshold());
 
             let mut elems: Vec<Option<ExprOrSpread>> = Vec::with_capacity(self.len());
 
-            let mut static_nodes = Vec::new();
-
             self.iter().for_each(|vnode| {
                 if vnode.is_static() {
-                    static_nodes.push(vnode)
+                    static_nodes.add(vnode)
                 } else {
-                    stringify_static(&mut elems, &mut static_nodes, state);
-
+                    elems.extend(static_nodes.hoist(state));
                     elems.push(Some(vnode.convert(state)))
                 }
             });
 
-            stringify_static(&mut elems, &mut static_nodes, state);
+            elems.extend(static_nodes.hoist(state));
 
             ArrayLit {
                 span: DUMMY_SP,

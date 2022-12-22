@@ -21,21 +21,21 @@ pub struct PluginOptions {
     /// Replace the function used when compiling JSX expressions
     pub pragma: Option<String>,
 
-    #[serde(default = "default_static_vnode_threshold")]
-    pub static_vnode_threshold: usize,
+    #[serde(default = "default_static_threshold")]
+    pub static_threshold: usize,
 }
 
 const fn default_true() -> bool {
     true
 }
 
-const fn default_static_vnode_threshold() -> usize {
+const fn default_static_threshold() -> usize {
     5
 }
 
 impl From<&str> for PluginOptions {
-    fn from(json: &str) -> Self {
-        serde_json::from_str(json).expect("invalid options for Vue JSX")
+    fn from(s: &str) -> Self {
+        serde_json::from_str(s).expect("Error: Invalid Options")
     }
 }
 

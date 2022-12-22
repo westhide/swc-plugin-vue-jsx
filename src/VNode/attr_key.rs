@@ -1,7 +1,7 @@
 use swc_core::ecma::ast::{JSXAttrName, JSXNamespacedName};
 
 use crate::{
-    constant::{CLASS, EMPTY_STR, INNER_HTML, KEY, MODEL, ON_CLICK, REF, STYLE, TEXT_CONTENT},
+    constant::{CLASS, EMPTY_STR, INNER_HTML, KEY, ON_CLICK, REF, STYLE, TEXT_CONTENT},
     shared::transform::Transform,
     utils::pattern::{is_directive, is_event},
 };
@@ -52,7 +52,7 @@ impl<'a> Key<'a> {
 
     fn specialize_directive(name: &'a str) -> Self {
         match name {
-            EMPTY_STR => panic!("specialize_directive: directive name can not empty"),
+            EMPTY_STR => panic!("Forbidden: Empty directive name"),
             "model" => Self::Model(None),
             "text" => Self::Attr(TEXT_CONTENT),
             "html" => Self::Attr(INNER_HTML),

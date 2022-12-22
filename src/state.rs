@@ -28,7 +28,7 @@ pub trait State<'s> {
 
     fn add_leading_comment(&self, pos: BytePos, cmt: Comment);
 
-    fn static_vnode_threshold(&self) -> usize;
+    fn static_threshold(&self) -> usize;
 }
 
 impl<'s, C: Comments> State<'s> for VueJSX<'s, C> {
@@ -67,7 +67,7 @@ impl<'s, C: Comments> State<'s> for VueJSX<'s, C> {
         self.comments.add_leading(pos, cmt)
     }
 
-    fn static_vnode_threshold(&self) -> usize {
-        self.opts.static_vnode_threshold
+    fn static_threshold(&self) -> usize {
+        self.opts.static_threshold
     }
 }

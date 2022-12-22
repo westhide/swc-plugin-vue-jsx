@@ -40,7 +40,7 @@ impl<'a> Transform<'a, Attr<'a>> for JSXAttrOrSpread {
                             value: Value::Empty,
                         }
                     },
-                    None => panic!("JSXAttr can not empty")
+                    None => panic!("Forbidden: Empty JSXAttr")
                 }
             },
             JSXAttrOrSpread::SpreadElement(SpreadElement { expr, .. }) => {
