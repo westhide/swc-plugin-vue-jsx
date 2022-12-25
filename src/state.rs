@@ -45,7 +45,7 @@ impl<'s, C: Comments> State<'s> for VueJSX<'s, C> {
     }
 
     fn hoist_expr(&mut self, expr: Expr) -> Ident {
-        self.hoist_helper.get_or_insert(expr).clone()
+        self.hoist.get_or_insert(expr).clone()
     }
 
     fn scope_expr(&mut self, expr: Expr) -> Ident {

@@ -1,7 +1,7 @@
 use swc_core::{
     common::DUMMY_SP,
     ecma::{
-        ast::{Expr, JSXElementName, JSXMemberExpr, Lit},
+        ast::{Expr, Ident, JSXElementName, JSXMemberExpr, Lit},
         utils::ExprFactory,
     },
 };
@@ -35,6 +35,14 @@ impl<'a> Tag<'a> {
             Self::Ext(name) => !state.is_custom_element(name),
         }
     }
+
+    pub fn resolve<'s, S: State<'s>>(name: &str, state: &mut S) -> Ident {
+        let resolve_component = state.import_from_vue("resolveComponent");
+
+        let resolve_expr = resolve_component.as_call(DUMMY_SP, vec![name.as_arg()]);
+
+        state.scope_expr(resolve_expr)
+    }
 }
 
 impl<'a> Transform<'a, Tag<'a>> for JSXElementName {
@@ -56,13 +64,7 @@ impl<'a, 's> Convert<'s, Expr> for Tag<'a> {
     fn convert<S: State<'s>>(&self, state: &mut S) -> Expr {
         match self {
             Self::Native(&ref name) => Lit::from(name).into(),
-            Self::Ext(name) => {
-                let resolve_component = state.import_from_vue("resolveComponent");
-
-                let resolve_expr = resolve_component.as_call(DUMMY_SP, vec![name.as_arg()]);
-
-                state.scope_expr(resolve_expr).into()
-            },
+            Self::Ext(name) => Self::resolve(name, state).into(),
             Self::MemberExpr(member_expr) => todo!(),
         }
     }

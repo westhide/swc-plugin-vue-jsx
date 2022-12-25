@@ -19,7 +19,13 @@ use crate::{
     patch_flag::PatchFlag,
     shared::{convert::Convert, transform::Transform},
     state::State,
-    vnode::{attr::Attr, attr_key::Key, element_tag::Tag, VNode},
+    vnode::{
+        attr::Attr,
+        attr_key::Key,
+        directive::{Directive, PushDirective},
+        element_tag::Tag,
+        VNode,
+    },
 };
 
 /// ## [Element]
@@ -168,6 +174,19 @@ fn create_element_node<'s, S: State<'s>>(
     create_vnode.as_call(DUMMY_SP, args)
 }
 
+fn create_with_directives<'s, S: State<'s>>(
+    expr: Expr,
+    directives: Vec<Directive>,
+    state: &mut S,
+) -> Expr {
+    let with_directives = state.import_from_vue("withDirectives");
+
+    with_directives.as_call(DUMMY_SP, vec![
+        expr.as_arg(),
+        directives.convert(state).as_arg(),
+    ])
+}
+
 impl<'a, 's> Convert<'s, Expr> for Element<'a> {
     fn convert<S: State<'s>>(&self, state: &mut S) -> Expr {
         let Self {
@@ -180,7 +199,7 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
 
         let is_cmpt = tag.is_component(state);
 
-        let mut directives: Vec<(&'a str, Box<Expr>)> = Vec::new();
+        let mut directives: Vec<Directive> = Vec::new();
 
         let mut flag = 0isize;
         let mut dyn_keys: Vec<Option<ExprOrSpread>> = Vec::new();
@@ -253,7 +272,7 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
                         dyn_keys.push(Some(arg.as_arg()))
                     } else {
                         flag |= PatchFlag::NEED_PATCH;
-                        directives.push((MODEL, value.clone()))
+                        directives.push_directive(MODEL, value.clone())
                     }
 
                     let listener = v_model_listener(value, state);
@@ -278,7 +297,7 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
                 Key::Directive(name) => {
                     flag |= PatchFlag::NEED_PATCH;
 
-                    directives.push((name, value));
+                    directives.push_directive(name, value);
                 },
                 Key::Attr(&ref name) => {
                     if is_dyn {
@@ -328,7 +347,13 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
 
             state.hoist_expr(expr).into()
         } else {
-            create_element_node(tag_arg, props_arg, children_arg, flag, dyn_keys, state)
+            let expr = create_element_node(tag_arg, props_arg, children_arg, flag, dyn_keys, state);
+
+            if directives.is_empty() {
+                expr
+            } else {
+                create_with_directives(expr, directives, state)
+            }
         }
     }
 }

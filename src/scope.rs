@@ -10,11 +10,11 @@ use swc_core::{
 use crate::shared::declare::Declare;
 
 #[derive(Debug, Default)]
-pub struct ScopeHelper {
+pub struct Scope {
     declaration: IndexMap<Expr, Ident>,
 }
 
-impl ScopeHelper {
+impl Scope {
     pub fn get_or_insert(&mut self, expr: Expr) -> &Ident {
         self.declaration
             .entry(expr)

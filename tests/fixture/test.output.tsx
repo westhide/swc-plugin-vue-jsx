@@ -1,4 +1,4 @@
-import { mergeProps, resolveComponent, createVNode, createTextVNode, createStaticVNode } from "vue";
+import { mergeProps, resolveComponent, createVNode, createTextVNode, createStaticVNode, withDirectives, vModelText } from "vue";
 const _hoisted_ = createTextVNode("123"), _hoisted_1 = [
     "frg"
 ], _hoisted_2 = createStaticVNode("<span ></span><span ></span><span ></span><span ></span><div ></div><div ></div>", 6), _hoisted_3 = [
@@ -6,7 +6,7 @@ const _hoisted_ = createTextVNode("123"), _hoisted_1 = [
 ], _hoisted_4 = createVNode("div", null, null, -1);
 const tmpl = (()=>{
     const _v = resolveComponent("A");
-    return createVNode("div", mergeProps(c, {
+    return withDirectives(createVNode("div", mergeProps(c, {
         clalang: a,
         "onUpdate:modelValue": ($v)=>b = $v
     }), [
@@ -18,5 +18,10 @@ const tmpl = (()=>{
             frg: _hoisted_4
         }, null, 8, _hoisted_1),
         _hoisted_2
-    ], 536, _hoisted_3);
+    ], 536, _hoisted_3), [
+        [
+            vModelText,
+            b
+        ]
+    ]);
 })();

@@ -18,6 +18,7 @@ pub const TEXT_CONTENT: &str = "textContent";
 pub const INNER_HTML: &str = "innerHTML";
 pub const MODEL: &str = "model";
 pub const MODEL_VALUE: &str = "modelValue";
+pub const SHOW: &str = "show";
 
 pub const JSW_KEY: JsWord = js_word!("key");
 pub const JSW_CLASS: JsWord = js_word!("class");

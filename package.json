@@ -19,5 +19,9 @@
     "prepack:wasm": "cp target/wasm32-unknown-unknown/release/swc_plugin_vue_jsx.wasm .",
     "build:wasi": "cargo build-wasi",
     "build:wasm32": "cargo build-wasm32"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }

@@ -10,11 +10,11 @@ use swc_core::{
 use crate::shared::declare::Declare;
 
 #[derive(Debug, Default)]
-pub struct HoistHelper {
+pub struct Hoist {
     declaration: IndexMap<Expr, Ident>,
 }
 
-impl HoistHelper {
+impl Hoist {
     fn not_import_decl(item: &ModuleItem) -> bool {
         !matches!(item, ModuleItem::ModuleDecl(ModuleDecl::Import(_)))
     }

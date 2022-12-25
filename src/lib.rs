@@ -23,23 +23,23 @@ use swc_core::{
 };
 
 use crate::{
-    hoist_helper::HoistHelper,
+    hoist::Hoist,
     import_helper::ImportHelper,
-    scope_helper::ScopeHelper,
+    scope::Scope,
     shared::{convert::Convert, transform::Transform},
-    vnode::{element::Element, VNode},
+    vnode::{element::Element, fragment::Fragment},
 };
 
 mod constant;
-mod hoist_helper;
+mod hoist;
 #[path = "import-helper/mod.rs"]
 mod import_helper;
 mod options;
 mod patch_flag;
-mod scope_helper;
+mod scope;
 mod shared;
 mod state;
-mod static_vnode_helper;
+mod static_vnode;
 mod utils;
 #[path = "VNode/mod.rs"]
 mod vnode;
@@ -67,11 +67,11 @@ pub struct VueJSX<'s, C: Comments> {
 
     import_helper: ImportHelper<'s>,
 
-    hoist_helper: HoistHelper,
+    hoist: Hoist,
 
     private_idents: HashMap<&'s str, Ident>,
 
-    scope: ScopeHelper,
+    scope: Scope,
 }
 
 impl<'s, C: Comments> VueJSX<'s, C> {
@@ -81,9 +81,9 @@ impl<'s, C: Comments> VueJSX<'s, C> {
             comments,
             unresolved_mark,
             import_helper: ImportHelper::default(),
-            hoist_helper: HoistHelper::default(),
+            hoist: Hoist::default(),
             private_idents: HashMap::new(),
-            scope: ScopeHelper::default(),
+            scope: Scope::default(),
         }
     }
 }
@@ -99,7 +99,7 @@ impl<'s, C: Comments> VisitMut for VueJSX<'s, C> {
         module.visit_mut_children_with(self);
 
         self.import_helper.inject(module);
-        self.hoist_helper.inject(module)
+        self.hoist.inject(module)
     }
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
@@ -114,20 +114,17 @@ impl<'s, C: Comments> VisitMut for VueJSX<'s, C> {
                 *expr = render_expr
             },
             Expr::JSXFragment(fragment) => {
-                let mut vnode: VNode = fragment.transform();
+                let mut fgm: Fragment = fragment.transform();
+
+                let fgm_expr = fgm.convert(self);
+
+                let render_expr = self.scope.create_render_expr(fgm_expr);
+
+                *expr = render_expr
             },
             _ => {},
         }
 
         expr.visit_mut_children_with(self);
     }
-
-    // fn visit_mut_jsx_element(&mut self, element: &mut JSXElement) {
-    //     let mut vnode = VNode::parse(&*element);
-    //     vnode.fix(self);
-    //
-    //     println!("======{:#?}", vnode);
-    //
-    //     element.visit_mut_children_with(self);
-    // }
 }

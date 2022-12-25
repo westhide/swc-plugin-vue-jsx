@@ -13,7 +13,7 @@ use crate::{
     constant::NULL_EXPR,
     shared::{convert::Convert, transform::Transform},
     state::State,
-    static_vnode_helper::StaticVNodeHelper,
+    static_vnode::StaticVNode,
     utils::code_emitter::CodeEmitter,
     vnode::{element::Element, fragment::Fragment, text::Text},
 };
@@ -121,20 +121,21 @@ impl<'a, 's> Convert<'s, Expr> for [VNode<'a>] {
         if self.is_empty() {
             NULL_EXPR
         } else {
-            let mut static_nodes = StaticVNodeHelper::new(state.static_threshold());
+            let mut static_vnode = StaticVNode::new(state.static_threshold());
 
             let mut elems: Vec<Option<ExprOrSpread>> = Vec::with_capacity(self.len());
 
             self.iter().for_each(|vnode| {
                 if vnode.is_static() {
-                    static_nodes.add(vnode)
+                    static_vnode.add(vnode)
                 } else {
-                    elems.extend(static_nodes.hoist(state));
+                    static_vnode.hoist(&mut elems, state);
+
                     elems.push(Some(vnode.convert(state)))
                 }
             });
 
-            elems.extend(static_nodes.hoist(state));
+            static_vnode.hoist(&mut elems, state);
 
             ArrayLit {
                 span: DUMMY_SP,

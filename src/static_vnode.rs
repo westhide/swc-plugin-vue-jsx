@@ -8,12 +8,12 @@ use swc_core::{
 
 use crate::{shared::convert::Convert, state::State, vnode::VNode};
 
-pub struct StaticVNodeHelper<'a> {
+pub struct StaticVNode<'a> {
     stack: Vec<&'a VNode<'a>>,
     threshold: usize,
 }
 
-impl<'a> StaticVNodeHelper<'a> {
+impl<'a> StaticVNode<'a> {
     pub fn new(threshold: usize) -> Self {
         Self {
             stack: Vec::new(),
@@ -21,7 +21,11 @@ impl<'a> StaticVNodeHelper<'a> {
         }
     }
 
-    pub fn hoist<'s, S: State<'s>>(&mut self, state: &mut S) -> Vec<Option<ExprOrSpread>> {
+    pub fn hoist<'s, S: State<'s>>(
+        &mut self,
+        elems: &mut Vec<Option<ExprOrSpread>>,
+        state: &mut S,
+    ) {
         let Self { stack, threshold } = self;
 
         let mut count = stack.len();
@@ -39,17 +43,12 @@ impl<'a> StaticVNodeHelper<'a> {
 
             let hoisted = state.hoist_expr(static_expr);
 
-            vec![Some(hoisted.as_arg())]
+            elems.push(Some(hoisted.as_arg()))
         } else {
-            stack
-                .iter()
-                .map(|vnode| Some(vnode.convert(state)))
-                .collect()
+            elems.extend(stack.iter().map(|vnode| Some(vnode.convert(state))))
         };
 
-        stack.truncate(0);
-
-        hoisted
+        stack.truncate(0)
     }
 
     pub fn add(&mut self, vnode: &'a VNode) {
