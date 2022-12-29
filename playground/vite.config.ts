@@ -1,7 +1,7 @@
 import {createFilter, defineConfig} from "vite";
 import {resolve} from "path";
 
-import SWC from "@swc/core";
+import {transformSync} from "@swc/core";
 
 import Inspect from "vite-plugin-inspect";
 
@@ -21,7 +21,7 @@ export default defineConfig({
 
         async transform(source, id) {
             if (filter(id)) {
-                return SWC.transformSync(source, {
+                return transformSync(source, {
                     isModule: true,
                     jsc: {
                         target: "es2022",
