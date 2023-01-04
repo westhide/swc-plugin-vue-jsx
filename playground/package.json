@@ -27,6 +27,7 @@
   "dependencies": {
     "@swc/cli": "^0.1.59",
     "@swc/core": "^1.3.24",
-    "@westhide/swc-plugin-vue-jsx": "0.2.1"
+    "@westhide/swc-plugin-vue-jsx": "../",
+    "vue": "^3.2.45"
   }
 }
