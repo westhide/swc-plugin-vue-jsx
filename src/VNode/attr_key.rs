@@ -21,6 +21,7 @@ pub enum Key<'a> {
     /// [ON_CLICK]
     /// - `onClick`, `on:click`
     OnClick,
+    Slots,
     /// [MODEL]
     /// - `v-model`, `v:model`, `v-model:*`<sup>arg</sup>
     Model(Option<&'a str>),
@@ -37,12 +38,6 @@ pub enum Key<'a> {
 }
 
 impl<'a> Key<'a> {
-    // fn v_model(value: Value<'a>, arg: Option<&'a str>) -> Self {
-    //     match value {
-    //         Value::Expr(expr) => Self::Model { expr, arg },
-    //         _ => panic!("v-model must have expr value"),
-    //     }
-    // }
     pub fn may_static(&self) -> bool {
         matches!(
             self,
@@ -56,6 +51,7 @@ impl<'a> Key<'a> {
             "model" => Self::Model(None),
             "text" => Self::Attr(TEXT_CONTENT),
             "html" => Self::Attr(INNER_HTML),
+            "slots" => Self::Slots,
             name => Self::Directive(name),
         }
     }

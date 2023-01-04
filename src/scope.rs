@@ -1,44 +1,42 @@
-use indexmap::IndexMap;
 use swc_core::{
     common::{util::take::Take, DUMMY_SP},
     ecma::{
         ast::{ArrowExpr, BlockStmt, BlockStmtOrExpr, Expr, Ident},
-        utils::{private_ident, ExprFactory},
+        utils::ExprFactory,
     },
 };
 
-use crate::shared::declare::Declare;
+use crate::hoist::Hoist;
 
-#[derive(Debug, Default)]
-pub struct Scope {
-    declaration: IndexMap<Expr, Ident>,
+#[derive(Debug)]
+pub struct Scope<'s> {
+    hoist: Hoist<'s>,
 }
 
-impl Scope {
+impl<'s> Scope<'s> {
+    pub fn new(id: &'s str) -> Self {
+        Self {
+            hoist: Hoist::new(id),
+        }
+    }
+
     pub fn get_or_insert(&mut self, expr: Expr) -> &Ident {
-        self.declaration
-            .entry(expr)
-            .or_insert_with(|| private_ident!("_v"))
+        self.hoist.get_or_insert(expr)
     }
 
     pub fn create_render_expr(&mut self, expr: Expr) -> Expr {
-        let Self { declaration } = self;
-
-        if declaration.is_empty() {
-            expr
-        } else {
-            let decls = declaration.decl();
-            let return_stmt = expr.into_return_stmt();
-
+        if let Some(decl) = self.hoist.decl() {
             ArrowExpr {
                 body: BlockStmtOrExpr::BlockStmt(BlockStmt {
                     span: DUMMY_SP,
-                    stmts: vec![decls.into(), return_stmt.into()],
+                    stmts: vec![decl.into(), expr.into_return_stmt().into()],
                 }),
                 ..Take::dummy()
             }
             .as_iife()
             .into()
+        } else {
+            expr
         }
     }
 }

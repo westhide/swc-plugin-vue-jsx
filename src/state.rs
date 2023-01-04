@@ -14,8 +14,6 @@ use crate::{regex_set, VueJSX};
 pub trait State<'s> {
     fn is_custom_element(&self, text: &str) -> bool;
 
-    fn is_transform_on(&self) -> bool;
-
     fn import_from_vue(&mut self, name: &'s str) -> Ident;
 
     fn hoist_expr(&mut self, expr: Expr) -> Ident;
@@ -34,10 +32,6 @@ pub trait State<'s> {
 impl<'s, C: Comments> State<'s> for VueJSX<'s, C> {
     fn is_custom_element(&self, text: &str) -> bool {
         regex_set!(&self.opts.custom_element_patterns).is_match(text)
-    }
-
-    fn is_transform_on(&self) -> bool {
-        self.opts.transform_on
     }
 
     fn import_from_vue(&mut self, name: &'s str) -> Ident {

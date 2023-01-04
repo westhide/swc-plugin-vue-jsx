@@ -6,7 +6,6 @@
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 // TODO: Debug only
 #![allow(unused)]
-#![feature(test)]
 
 use std::collections::HashMap;
 
@@ -67,11 +66,11 @@ pub struct VueJSX<'s, C: Comments> {
 
     import_helper: ImportHelper<'s>,
 
-    hoist: Hoist,
+    hoist: Hoist<'s>,
 
     private_idents: HashMap<&'s str, Ident>,
 
-    scope: Scope,
+    scope: Scope<'s>,
 }
 
 impl<'s, C: Comments> VueJSX<'s, C> {
@@ -81,9 +80,9 @@ impl<'s, C: Comments> VueJSX<'s, C> {
             comments,
             unresolved_mark,
             import_helper: ImportHelper::default(),
-            hoist: Hoist::default(),
+            hoist: Hoist::new("_hoisted_"),
             private_idents: HashMap::new(),
-            scope: Scope::default(),
+            scope: Scope::new("_v"),
         }
     }
 }

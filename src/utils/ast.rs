@@ -1,7 +1,8 @@
 use swc_core::{
     common::util::take::Take,
     ecma::ast::{
-        ArrayLit, Expr, ExprOrSpread, Ident, KeyValueProp, ObjectLit, Prop, PropOrSpread, SeqExpr,
+        ArrayLit, Expr, ExprOrSpread, Ident, KeyValueProp, ModuleDecl, ModuleItem, ObjectLit, Prop,
+        PropOrSpread, SeqExpr,
     },
 };
 
@@ -49,4 +50,8 @@ pub fn is_constant_expr(expr: &Expr) -> bool {
         Expr::Seq(SeqExpr { exprs, .. }) => exprs.iter().all(|expr| is_constant_expr(expr)),
         _ => false,
     }
+}
+
+pub fn is_import_decl_module_item(item: &ModuleItem) -> bool {
+    matches!(item, ModuleItem::ModuleDecl(ModuleDecl::Import(_)))
 }

@@ -4,23 +4,10 @@ use swc_core::plugin::metadata::TransformPluginProgramMetadata as Metadata;
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase", default)]
 pub struct PluginOptions {
-    /// transform `on:{click: xx}` to `onClick: xxx`
-    pub transform_on: bool,
-    /// enable optimization or not.
-    pub optimize: bool,
-    /// merge static and dynamic class / style attributes / onXXX handlers
-    /// - default: true
-    #[serde(default = "default_true")]
-    pub merge_props: bool,
-    /// configuring custom elements
+    /// custom elements
     pub custom_element_patterns: Vec<String>,
-    /// enable object slots syntax
-    /// - default: true
-    #[serde(default = "default_true")]
-    pub enable_object_slots: bool,
-    /// Replace the function used when compiling JSX expressions
-    pub pragma: Option<String>,
-
+    /// static JSXElementChild hoist threshold
+    /// - default: 5
     #[serde(default = "default_static_threshold")]
     pub static_threshold: usize,
 }

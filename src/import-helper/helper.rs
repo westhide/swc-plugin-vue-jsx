@@ -105,13 +105,11 @@ impl<'a> ImportHelper<'a> {
     }
 
     pub fn inject(&mut self, module: &mut Module) {
-        if self.declaration.is_empty() {
-            return;
+        if !self.declaration.is_empty() {
+            let loc = self.loc;
+            let decls = self.import_decls();
+
+            module.body.splice(loc..loc, decls);
         }
-
-        let loc = self.loc;
-        let decls = self.import_decls();
-
-        module.body.splice(loc..loc, decls);
     }
 }

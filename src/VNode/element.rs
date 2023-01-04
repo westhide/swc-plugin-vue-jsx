@@ -140,20 +140,20 @@ fn create_props_expr<'s, S: State<'s>>(
     }
 }
 
-/// ## [create_vnode_expr]
+/// ## [create_element_expr]
 ///
 /// ---
-fn create_element_node<'s, S: State<'s>>(
+fn create_element_expr<'s, S: State<'s>>(
     tag: ExprOrSpread,
     props: ExprOrSpread,
-    children: ExprOrSpread,
+    children_or_slots: ExprOrSpread,
     patch_flag: isize,
     dyn_keys: Vec<Option<ExprOrSpread>>,
     state: &mut S,
 ) -> Expr {
     let create_vnode = state.import_from_vue("createVNode");
 
-    let mut args = vec![tag, props, children];
+    let mut args = vec![tag, props, children_or_slots];
 
     if patch_flag != 0 {
         args.push((patch_flag as f64).as_arg());
@@ -206,6 +206,7 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
 
         let mut spreads: Vec<ExprOrSpread> = Vec::new();
         let mut props: Vec<PropOrSpread> = Vec::with_capacity(attrs.len());
+        let mut slots: Option<ExprOrSpread> = None;
 
         attrs.iter().for_each(|Attr { key, value }| {
             let is_dyn = value.is_dyn();
@@ -256,6 +257,13 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
                     }
 
                     props.push_ident_prop(ON_CLICK, value)
+                },
+                Key::Slots => {
+                    if tag.is_component(state) {
+                        slots = Some(value.as_arg())
+                    } else {
+                        panic!("Forbidden: v-slots on Non-Component tag")
+                    }
                 },
                 Key::Model(arg) => {
                     if !is_dyn {
@@ -331,29 +339,33 @@ impl<'a, 's> Convert<'s, Expr> for Element<'a> {
 
         let props_arg = create_props_expr(props, spreads, state).as_arg();
 
-        let children_arg = children.convert(state).as_arg();
+        let children_or_slots = if let Some(slots) = slots {
+            slots
+        } else {
+            children.convert(state).as_arg()
+        };
 
-        // TODO: models, directives
+        let patch_flag = if *is_static { PatchFlag::HOISTED } else { flag };
+
+        let element_expr = create_element_expr(
+            tag_arg,
+            props_arg,
+            children_or_slots,
+            patch_flag,
+            dyn_keys,
+            state,
+        );
+
+        let expr = if directives.is_empty() {
+            element_expr
+        } else {
+            create_with_directives(element_expr, directives, state)
+        };
 
         if *is_static {
-            let expr = create_element_node(
-                tag_arg,
-                props_arg,
-                children_arg,
-                PatchFlag::HOISTED,
-                dyn_keys,
-                state,
-            );
-
             state.hoist_expr(expr).into()
         } else {
-            let expr = create_element_node(tag_arg, props_arg, children_arg, flag, dyn_keys, state);
-
-            if directives.is_empty() {
-                expr
-            } else {
-                create_with_directives(expr, directives, state)
-            }
+            expr
         }
     }
 }
