@@ -2,6 +2,7 @@
 #[derive(Debug)]
 pub struct PatchFlag;
 
+#[allow(dead_code)]
 impl PatchFlag {
     pub const BAIL: isize = -2;
     pub const CLASS: isize = 1 << 1;

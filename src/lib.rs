@@ -4,43 +4,37 @@
 #![feature(let_chains)]
 #![feature(if_let_guard)]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
-// TODO: Debug only
-#![allow(unused)]
 
 use std::collections::HashMap;
 
 pub use options::PluginOptions;
-use state::State;
 use swc_core::{
-    common::{chain, comments::Comments, util::take::Take, Mark},
+    common::{comments::Comments, Mark},
     ecma::{
         ast::{Expr, Ident, Module, Program},
-        transforms::base::hygiene::hygiene,
         visit::{as_folder, noop_visit_mut_type, FoldWith, VisitMut, VisitMutWith},
     },
-    plugin::{metadata::TransformPluginProgramMetadata as Metadata, plugin_transform},
+    plugin::{plugin_transform, proxies::TransformPluginProgramMetadata as Metadata},
 };
+use swc_helper_jsx_transform::shared::Transform;
+use swc_helper_module_import::ImportHelper;
 
 use crate::{
     hoist::Hoist,
-    import_helper::ImportHelper,
-    scope::Scope,
-    shared::{convert::Convert, transform::Transform},
-    vnode::{element::Element, fragment::Fragment},
+    shared::{convert::Convert, expr::ExprExtend},
 };
 
 mod constant;
+mod context;
+mod element;
+mod fragment;
 mod hoist;
-#[path = "import-helper/mod.rs"]
-mod import_helper;
 mod options;
 mod patch_flag;
-mod scope;
 mod shared;
-mod state;
-mod static_vnode;
+mod split_static;
+mod text;
 mod utils;
-#[path = "VNode/mod.rs"]
 mod vnode;
 
 #[plugin_transform]
@@ -53,73 +47,78 @@ pub fn process_transform(program: Program, metadata: Metadata) -> Program {
         ..
     } = metadata;
 
-    program.fold_with(&mut chain!(
-        as_folder(VueJSX::new(opts, comments, unresolved_mark)),
-        hygiene()
-    ))
+    program.fold_with(&mut as_folder(VueJSX::new(opts, comments, unresolved_mark)))
 }
 
-pub struct VueJSX<'s, C: Comments> {
+#[allow(dead_code)]
+pub struct VueJSX<'a, C: Comments> {
     opts: PluginOptions,
     comments: Option<C>,
     unresolved_mark: Mark,
 
-    import_helper: ImportHelper<'s>,
+    import_helper: ImportHelper<'a>,
 
-    hoist: Hoist<'s>,
+    ident_map: HashMap<&'a str, Ident>,
 
-    private_idents: HashMap<&'s str, Ident>,
+    module_hoist: Hoist<'a>,
 
-    scope: Scope<'s>,
+    scope_hoist: Hoist<'a>,
 }
 
-impl<'s, C: Comments> VueJSX<'s, C> {
+impl<'a, C: Comments> VueJSX<'a, C> {
     pub fn new(opts: PluginOptions, comments: Option<C>, unresolved_mark: Mark) -> Self {
         Self {
             opts,
             comments,
             unresolved_mark,
             import_helper: ImportHelper::default(),
-            hoist: Hoist::new("_hoisted_"),
-            private_idents: HashMap::new(),
-            scope: Scope::new("_v"),
+            ident_map: HashMap::new(),
+            module_hoist: Hoist::new("_hoisted_"),
+            scope_hoist: Hoist::new("_v"),
         }
+    }
+
+    pub fn store(&mut self, module: &mut Module) {
+        self.import_helper.store(module)
+    }
+
+    pub fn complete(&mut self, module: &mut Module) {
+        self.import_helper.add_to_module(module);
+        self.module_hoist.add_to_module(module)
     }
 }
 
-impl<'s, C: Comments> VisitMut for VueJSX<'s, C> {
+impl<'a, 'b, C: Comments> VueJSX<'a, C> {
+    pub fn compile<T, U>(&mut self, target: &'b T) -> Expr
+    where
+        T: Transform<'b, U>,
+        U: Convert<'a, Expr>,
+    {
+        target
+            .transform()
+            .convert(self)
+            .with_hoist(&mut self.scope_hoist)
+    }
+}
+
+impl<'a, C: Comments> VisitMut for VueJSX<'a, C> {
     noop_visit_mut_type!();
 
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let Self { import_helper, .. } = self;
-
-        import_helper.init(module);
+        self.store(module);
 
         module.visit_mut_children_with(self);
 
-        self.import_helper.inject(module);
-        self.hoist.inject(module)
+        self.complete(module)
     }
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         match &expr {
             Expr::JSXElement(box element) => {
-                let mut elm: Element = element.transform();
-
-                let elm_expr = elm.convert(self);
-
-                let render_expr = self.scope.create_render_expr(elm_expr);
-
-                *expr = render_expr
+                *expr = self.compile(element);
             },
             Expr::JSXFragment(fragment) => {
-                let mut fgm: Fragment = fragment.transform();
-
-                let fgm_expr = fgm.convert(self);
-
-                let render_expr = self.scope.create_render_expr(fgm_expr);
-
-                *expr = render_expr
+                *expr = self.compile(fragment);
             },
             _ => {},
         }

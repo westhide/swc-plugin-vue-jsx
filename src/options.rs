@@ -12,10 +12,6 @@ pub struct PluginOptions {
     pub static_threshold: usize,
 }
 
-const fn default_true() -> bool {
-    true
-}
-
 const fn default_static_threshold() -> usize {
     5
 }

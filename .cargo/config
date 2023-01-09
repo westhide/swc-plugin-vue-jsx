@@ -2,5 +2,7 @@
 build-wasi = "build --target wasm32-wasi --release"
 build-wasm32 = "build --target wasm32-unknown-unknown --release"
 
+publish-crate = "publish --registry crates-io"
+
 [env]
 RUST_LOG = "OFF"

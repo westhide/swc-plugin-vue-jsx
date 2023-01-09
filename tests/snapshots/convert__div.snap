@@ -1,0 +1,22 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { Fragment, resolveComponent, createVNode, createStaticVNode, createElementVNode } from "vue";
+const _hoisted_ = createStaticVNode("123"), _hoisted_1 = createElementVNode("div", null, null, -1), _hoisted_2 = createStaticVNode("123<span ></span><span ></span><span ></span><span ></span><div ></div><div ></div>");
+const app = (()=>{
+    const _v = resolveComponent("A");
+    return createVNode(Fragment, null, [
+        createVNode(_v, null, null),
+        _hoisted_,
+        d,
+        ...e,
+        createVNode("div", {
+            frg: _hoisted_1
+        }, null, 8, [
+            "frg"
+        ]),
+        _hoisted_2
+    ]);
+})();
+
