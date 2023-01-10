@@ -48,7 +48,7 @@ impl<'a, 'b> Convert<'a, Expr> for [VNode<'b>] {
                 Item::Static(statics) => {
                     let content: String = statics.iter().map(VNode::static_content).collect();
 
-                    let static_vnode_expr = ctx.create_static_vnode(args![content]);
+                    let static_vnode_expr = ctx.create_static_vnode(args![content, statics.len()]);
 
                     elems.add(static_vnode_expr.as_arg())
                 },
