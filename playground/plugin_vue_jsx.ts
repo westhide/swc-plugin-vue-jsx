@@ -5,8 +5,19 @@ export default function () {
   const filter = createFilter(/\.[jt]sx$/);
 
   return {
-    name: "swc-plugin-vue-jsx",
-    enforce: "pre",
+    name: "vite-plugin-vue-jsx",
+
+    config() {
+      return {
+        esbuild: {
+          include: /\.ts$/,
+        },
+        define: {
+          __VUE_OPTIONS_API__: true,
+          __VUE_PROD_DEVTOOLS__: false,
+        },
+      };
+    },
 
     async transform(src, id) {
       if (filter(id)) {
