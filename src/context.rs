@@ -16,6 +16,8 @@ use crate::{
 };
 
 pub trait Context<'a> {
+    fn has_mark<'b>(&self, ident: &Ident) -> bool;
+
     fn is_custom_element(&self, text: &str) -> bool;
 
     fn import_from_vue(&mut self, name: &'a str) -> Ident;
@@ -75,6 +77,10 @@ pub trait Context<'a> {
 }
 
 impl<'a, C: Comments> Context<'a> for VueJSX<'a, C> {
+    fn has_mark(&self, ident: &Ident) -> bool {
+        ident.span.has_mark(self.unresolved_mark.clone())
+    }
+
     fn is_custom_element(&self, text: &str) -> bool {
         regex_set!(&self.opts.custom_element_patterns).is_match(text)
     }

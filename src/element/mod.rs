@@ -33,7 +33,7 @@ pub mod tag;
 fn is_component<'a>(tag: &Tag, ctx: &mut impl Context<'a>) -> bool {
     match tag {
         Tag::Native(_) => false,
-        Tag::Extra(name) => !ctx.is_custom_element(name),
+        Tag::Extra(name) => !ctx.is_custom_element(&name.sym),
         Tag::Member(_) => true,
     }
 }

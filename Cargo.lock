@@ -1393,9 +1393,9 @@ dependencies = [
 
 [[package]]
 name = "swc-helper-jsx-transform"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6e17fbfcfe6757cd71b95a7017543f98a7277a7bf2e762c720da42aeaa87a37"
+checksum = "c212c8ef83119dfe6dbf29b6abcef9e17b925a29a5f6610ab833bf04899af2db"
 dependencies = [
  "indexmap",
  "once_cell",
