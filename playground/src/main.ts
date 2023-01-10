@@ -1,4 +1,4 @@
-import {a} from "./test"
+import { a } from "./test";
 
-console.log(a)
-console.log(1)
+console.log(a);
+console.log(1);

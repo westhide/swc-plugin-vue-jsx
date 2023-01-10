@@ -1,1 +1,1 @@
-export const a = <div></div>
+export const a = <div></div>;
