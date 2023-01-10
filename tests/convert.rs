@@ -48,11 +48,14 @@ macro_rules! test {
             });
         }
     };
+
+    ({ $($name:ident : $src:literal),+ $(,)? }) => {
+        $(test!($name,$src);)+
+    };
 }
 
-test!(
-    div,
-    r#"const app = <>
+test!({
+    div:r#"const app = <>
             <A></A>
             123
             {d}
@@ -67,4 +70,4 @@ test!(
             <div></div>
             <div></div>
     </>"#
-);
+});
