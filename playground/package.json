@@ -1,6 +1,5 @@
 {
   "name": "@westhide/swc-plugin-vue-jsx-playground",
-  "private": true,
   "version": "0.1.0",
   "description": "SWC plugin Vue JSX playground.",
   "keywords": [
