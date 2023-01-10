@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use swc_core::plugin::metadata::TransformPluginProgramMetadata as Metadata;
 
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct PluginOptions {
     /// custom elements
