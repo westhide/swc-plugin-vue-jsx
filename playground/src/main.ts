@@ -1,4 +1,4 @@
-import { a } from "./test";
+import { createApp } from "vue";
+import { App } from "./app";
 
-console.log(a);
-console.log(1);
+createApp(App).mount("#app");
