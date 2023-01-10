@@ -1,6 +1,6 @@
 [package]
 name = "swc-plugin-vue-jsx"
-version = "0.1.0"
+version = "0.1.1"
 description = "SWC plugin for Vue JSX"
 authors = ["westhide <mr.westhide@gmail.com>"]
 repository = "https://github.com/westhide/swc-plugin-vue-jsx.git"
