@@ -16,7 +16,7 @@ use crate::{
 };
 
 pub trait Context<'a> {
-    fn has_mark<'b>(&self, ident: &Ident) -> bool;
+    fn is_unresolved<'b>(&self, ident: &Ident) -> bool;
 
     fn is_custom_element(&self, text: &str) -> bool;
 
@@ -77,7 +77,7 @@ pub trait Context<'a> {
 }
 
 impl<'a, C: Comments> Context<'a> for VueJSX<'a, C> {
-    fn has_mark(&self, ident: &Ident) -> bool {
+    fn is_unresolved(&self, ident: &Ident) -> bool {
         ident.span.has_mark(self.unresolved_mark.clone())
     }
 

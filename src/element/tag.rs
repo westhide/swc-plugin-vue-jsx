@@ -12,10 +12,10 @@ impl<'a, 'b> Convert<'a, Expr> for Tag<'b> {
 
                 if ctx.is_custom_element(name) {
                     name.into()
-                } else if ctx.has_mark(ident) {
-                    Ident::clone(ident).into()
-                } else {
+                } else if ctx.is_unresolved(ident) {
                     ctx.resolve("resolveComponent", name)
+                } else {
+                    Ident::clone(ident).into()
                 }
             },
             Self::Member(member) => JSXMemberExpr::clone(member).into(),
