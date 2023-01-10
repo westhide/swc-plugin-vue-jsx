@@ -1,0 +1,10 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { createTextVNode, createElementVNode } from "vue";
+const _hoisted_ = createTextVNode("Hello World"), _hoisted_1 = createElementVNode("h1", null, [
+    _hoisted_
+], -1);
+const app = ()=>_hoisted_1;
+

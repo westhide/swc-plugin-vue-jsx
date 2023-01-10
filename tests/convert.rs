@@ -21,14 +21,15 @@ const TSX_SYNTAX: Syntax = Syntax::Typescript(TsConfig {
 });
 
 macro_rules! test {
-    ($name:ident, $src:literal) => {
+    ($name:ident, $src:literal, $opts:expr) => {
         #[test]
+        #[allow(non_snake_case)]
         fn $name() {
             Tester::run(|tester| {
                 let module = tester.apply_transform(
                     chain!(
                         as_folder(VueJSX::<PluginCommentsProxy>::new(
-                            PluginOptions::default(),
+                            $opts,
                             None,
                             Mark::new(),
                         )),
@@ -49,25 +50,15 @@ macro_rules! test {
         }
     };
 
+    ($name:ident, $src:literal) => {
+        test!($name, $src, PluginOptions::from("{}"));
+    };
+
     ({ $($name:ident : $src:literal),+ $(,)? }) => {
         $(test!($name,$src);)+
     };
 }
 
 test!({
-    div:r#"const app = <>
-            <A></A>
-            123
-            {d}
-            {...e}
-            <div frg={<div></div>}></div>
-
-            123
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-            <div></div>
-            <div></div>
-    </>"#
+    HelloWorld: r#"const app = () => <h1>Hello World</h1>"#
 });
