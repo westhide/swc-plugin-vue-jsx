@@ -14,8 +14,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "check": "vitest",
     "test": "vitest run",
-    "test:dev": "vitest",
     "bench": "vitest bench --run",
     "build": "tsc && vite build",
     "preview": "vite preview"
