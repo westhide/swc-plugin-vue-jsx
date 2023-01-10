@@ -1,6 +1,6 @@
 {
   "name": "@westhide/swc-plugin-vue-jsx",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "SWC plugin for Vue JSX",
   "keywords": [
     "swc-plugin",
