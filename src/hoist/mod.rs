@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use swc_core::{
     common::util::take::Take,
-    ecma::ast::{Expr, Ident, Module, ModuleItem, VarDecl, VarDeclKind},
+    ecma::ast::{Expr, Ident, Module, ModuleDecl, ModuleItem, VarDecl, VarDeclKind},
 };
 
 use crate::hoist::decl_map::Declarator;
@@ -50,7 +50,7 @@ impl<'a> Hoist<'a> {
 
             for item in body.iter() {
                 match item {
-                    ModuleItem::ModuleDecl(_) => idx += 1,
+                    ModuleItem::ModuleDecl(ModuleDecl::Import(_)) => idx += 1,
                     _ => break,
                 }
             }
