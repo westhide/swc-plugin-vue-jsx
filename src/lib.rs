@@ -37,19 +37,6 @@ mod text;
 mod utils;
 mod vnode;
 
-#[plugin_transform]
-pub fn process_transform(program: Program, metadata: Metadata) -> Program {
-    let opts = PluginOptions::from(&metadata);
-
-    let Metadata {
-        comments,
-        unresolved_mark,
-        ..
-    } = metadata;
-
-    program.fold_with(&mut as_folder(VueJSX::new(opts, comments, unresolved_mark)))
-}
-
 #[allow(dead_code)]
 pub struct VueJSX<'a, C: Comments> {
     opts: PluginOptions,
@@ -125,4 +112,17 @@ impl<'a, C: Comments> VisitMut for VueJSX<'a, C> {
 
         expr.visit_mut_children_with(self);
     }
+}
+
+#[plugin_transform]
+pub fn process_transform(program: Program, metadata: Metadata) -> Program {
+    let opts = PluginOptions::from(&metadata);
+
+    let Metadata {
+        comments,
+        unresolved_mark,
+        ..
+    } = metadata;
+
+    program.fold_with(&mut as_folder(VueJSX::new(opts, comments, unresolved_mark)))
 }
