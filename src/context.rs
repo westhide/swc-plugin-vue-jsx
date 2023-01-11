@@ -78,7 +78,7 @@ pub trait Context<'a> {
 
 impl<'a, C: Comments> Context<'a> for VueJSX<'a, C> {
     fn is_unresolved(&self, ident: &Ident) -> bool {
-        ident.span.has_mark(self.unresolved_mark.clone())
+        ident.span.has_mark(self.unresolved_mark)
     }
 
     fn is_custom_element(&self, text: &str) -> bool {
