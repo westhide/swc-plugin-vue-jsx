@@ -17,8 +17,10 @@
   "scripts": {
     "dev": "pnpm --filter \"./playground\" dev",
     "test": "cargo test --test convert && pnpm test -r",
-    "build:wasi": "cargo build-wasi && cp target/wasm32-wasi/release/swc_plugin_vue_jsx.wasm .",
-    "build:wasm32": "cargo build-wasm32 && cp target/wasm32-unknown-unknown/release/swc_plugin_vue_jsx.wasm ."
+    "build:wasi": "cargo build-wasi",
+    "postbuild:wasi": "cp target/wasm32-wasi/release/swc_plugin_vue_jsx.wasm .",
+    "build:wasm32": "cargo build-wasm32",
+    "postbuild:wasm32": "cp target/wasm32-unknown-unknown/release/swc_plugin_vue_jsx.wasm ."
   },
   "publishConfig": {
     "access": "public",
