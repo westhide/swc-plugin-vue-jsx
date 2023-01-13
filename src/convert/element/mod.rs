@@ -2,10 +2,10 @@ use swc_core::{
     common::{util::take::Take, DUMMY_SP},
     ecma::{
         ast::{
-            op, ArrayLit, ArrowExpr, AssignExpr, Expr, ExprOrSpread, KeyValueProp, ObjectLit, Prop,
-            PropOrSpread,
+            op, ArrayLit, ArrowExpr, AssignExpr, Expr, ExprOrSpread, Ident, KeyValueProp,
+            ObjectLit, Prop, PropOrSpread,
         },
-        utils::{quote_ident, ExprFactory},
+        utils::{quote_ident, quote_str, ExprFactory},
     },
 };
 use swc_helper_jsx_transform::{
@@ -86,8 +86,14 @@ impl<'a> State<'a> {
     }
 
     fn add_prop(&mut self, name: &str, expr: Expr) {
+        let key = if Ident::verify_symbol(name).is_ok() {
+            quote_ident!(name).into()
+        } else {
+            quote_str!(name).into()
+        };
+
         let prop = Prop::KeyValue(KeyValueProp {
-            key: quote_ident!(name).into(),
+            key,
             value: Box::new(expr),
         });
 
