@@ -1,5 +1,5 @@
 import { type Plugin, createFilter } from "vite";
-import { transformSync } from "@swc/core";
+import { transform } from "@swc/core";
 
 export default function () {
   const filter = createFilter(/\.[jt]sx$/);
@@ -21,7 +21,7 @@ export default function () {
 
     async transform(src, id) {
       if (filter(id)) {
-        return transformSync(src, {
+        return transform(src, {
           isModule: true,
           jsc: {
             target: "es2022",
