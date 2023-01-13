@@ -1,0 +1,24 @@
+body {
+  background-color: #1e1e1e;
+}
+
+#app {
+  color: white;
+}
+
+.editor {
+  position: absolute;
+  top: 40px;
+  bottom: 0;
+  box-sizing: border-box;
+}
+
+.source {
+  left: 0;
+  width: 45%;
+}
+
+.output {
+  left: 45%;
+  width: 55%;
+}

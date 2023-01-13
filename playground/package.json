@@ -37,6 +37,7 @@
     "@swc/cli": "^0.1.59",
     "@swc/core": "^1.3.25",
     "@westhide/swc-plugin-vue-jsx": "workspace:*",
+    "monaco-editor": "^0.34.1",
     "vue": "^3.2.45"
   }
 }
