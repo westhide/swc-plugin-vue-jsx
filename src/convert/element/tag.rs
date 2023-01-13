@@ -1,19 +1,15 @@
 use swc_core::ecma::ast::{Expr, Ident, JSXMemberExpr};
 use swc_helper_jsx_transform::element::tag::Tag;
 
-use crate::{context::Context, shared::convert::Convert};
+use crate::{context::Context, convert::Convert};
 
-impl<'a, 'b> Convert<'a, Expr> for Tag<'b> {
-    fn convert(&self, ctx: &mut impl Context<'a>) -> Expr {
+impl<'a> Convert<Expr> for Tag<'a> {
+    fn convert<C: Context>(&self, ctx: &mut C) -> Expr {
         match self {
             Self::Native(name) => Expr::from(*name),
             Self::Extra(ident) => {
-                let name = ident.as_ref();
-
-                if ctx.is_custom_element(name) {
-                    name.into()
-                } else if ctx.is_unresolved(ident) {
-                    ctx.resolve("resolveComponent", name)
+                if ctx.is_unresolved(ident) {
+                    ctx.resolve("resolveComponent", ident.as_ref())
                 } else {
                     Ident::clone(ident).into()
                 }

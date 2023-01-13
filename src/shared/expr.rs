@@ -9,19 +9,19 @@ use swc_core::{
 use crate::{context::Context, hoist::Hoist};
 
 pub trait ExprExtend {
-    fn hoist_to_module<'a>(self, ctx: &mut impl Context<'a>) -> Expr;
+    fn hoist_to_module<C: Context>(self, ctx: &mut C) -> Expr;
 
-    fn hoist_to_scope<'a>(self, ctx: &mut impl Context<'a>) -> Expr;
+    fn hoist_to_scope<C: Context>(self, ctx: &mut C) -> Expr;
 
     fn with_hoist(self, hoist: &mut Hoist) -> Expr;
 }
 
 impl ExprExtend for Expr {
-    fn hoist_to_module<'a>(self, ctx: &mut impl Context<'a>) -> Expr {
+    fn hoist_to_module<C: Context>(self, ctx: &mut C) -> Expr {
         ctx.hoist_to_module(self).into()
     }
 
-    fn hoist_to_scope<'a>(self, ctx: &mut impl Context<'a>) -> Expr {
+    fn hoist_to_scope<C: Context>(self, ctx: &mut C) -> Expr {
         ctx.hoist_to_scope(self).into()
     }
 

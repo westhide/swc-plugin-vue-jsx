@@ -25,7 +25,7 @@ impl Declarator for DeclMap {
             .map(|(expr, ident)| {
                 VarDeclarator {
                     name: ident.into(),
-                    init: Some(box expr),
+                    init: Some(Box::new(expr)),
                     ..Take::dummy()
                 }
             })

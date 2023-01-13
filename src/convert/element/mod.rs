@@ -10,7 +10,7 @@ use swc_core::{
 };
 use swc_helper_jsx_transform::{
     attr::{key::Key, Attr},
-    element::{tag::Tag, Element},
+    element::Element,
 };
 
 use crate::{
@@ -20,9 +20,8 @@ use crate::{
         V_MODEL, V_SLOTS, V_TEXT,
     },
     context::Context,
-    element::directive::Directive,
-    patch_flag::PatchFlag,
-    shared::{add::Add, convert::Convert, expr::ExprExtend},
+    convert::{element::directive::Directive, patch_flag::PatchFlag, Convert},
+    shared::{add::Add, expr::ExprExtend},
     utils::is::is_directive,
 };
 
@@ -30,16 +29,8 @@ pub mod attr_value;
 pub mod directive;
 pub mod tag;
 
-fn is_component<'a>(tag: &Tag, ctx: &mut impl Context<'a>) -> bool {
-    match tag {
-        Tag::Native(_) => false,
-        Tag::Extra(name) => !ctx.is_custom_element(&name.sym),
-        Tag::Member(_) => true,
-    }
-}
-
 #[derive(Debug)]
-pub struct State<'s> {
+pub struct State<'a> {
     props: Vec<PropOrSpread>,
     spreads: Vec<ExprOrSpread>,
 
@@ -48,13 +39,13 @@ pub struct State<'s> {
     flag: isize,
     dyn_keys: Vec<Option<ExprOrSpread>>,
 
-    directives: Vec<Directive<'s>>,
+    directives: Vec<Directive<'a>>,
 
-    raw: &'s Element<'s>,
+    raw: &'a Element<'a>,
 }
 
-impl<'s> State<'s> {
-    pub fn new(element: &'s Element<'s>) -> Self {
+impl<'a> State<'a> {
+    pub fn new(element: &'a Element) -> Self {
         Self {
             props: Vec::new(),
             spreads: Vec::new(),
@@ -65,9 +56,7 @@ impl<'s> State<'s> {
             raw: element,
         }
     }
-}
 
-impl<'s> State<'s> {
     fn has_dyn_class(&mut self) {
         self.flag |= PatchFlag::CLASS
     }
@@ -96,17 +85,21 @@ impl<'s> State<'s> {
         self.flag |= PatchFlag::FULL_PROPS
     }
 
-    fn add_prop(&mut self, name: &str, value: Expr) {
+    fn add_prop(&mut self, name: &str, expr: Expr) {
         let prop = Prop::KeyValue(KeyValueProp {
             key: quote_ident!(name).into(),
-            value: box value,
+            value: Box::new(expr),
         });
 
         self.props.push(prop.into())
     }
 
-    fn add_spread(&mut self, value: Expr) {
-        self.spreads.add(value)
+    fn add_spread(&mut self, expr: Expr) {
+        self.spreads.add(expr)
+    }
+
+    fn add_slots(&mut self, expr: Expr) {
+        self.slots = Some(expr)
     }
 
     fn add_dyn_key(&mut self, name: &str) {
@@ -115,20 +108,18 @@ impl<'s> State<'s> {
         self.dyn_keys.push(Some(name.as_arg()))
     }
 
-    fn add_directive(&mut self, name: &'s str, value: Expr) {
-        self.directives.push(Directive { name, value })
+    fn add_directive(&mut self, name: &'a str, expr: Expr) {
+        self.directives.push(Directive { name, value: expr })
     }
-}
 
-impl<'a, 's> State<'s> {
-    fn add_on_update(&mut self, key: &str, value: Expr, ctx: &mut impl Context<'a>) {
+    fn add_on_update<C: Context>(&mut self, key: &str, expr: Expr, ctx: &mut C) {
         let param = ctx.get_ident("$v");
 
         let listener = ArrowExpr {
             params: vec![param.clone().into()],
             body: AssignExpr {
                 span: DUMMY_SP,
-                left: value.as_pat_or_expr(),
+                left: expr.as_pat_or_expr(),
                 op: op!("="),
                 right: param.into(),
             }
@@ -140,7 +131,7 @@ impl<'a, 's> State<'s> {
         self.add_prop(&format!("onUpdate:{key}"), listener)
     }
 
-    pub fn convert_into_expr(self, ctx: &mut impl Context<'a>) -> Expr {
+    fn into_expr<C: Context>(self, ctx: &mut C) -> Expr {
         let Self {
             props,
             mut spreads,
@@ -155,6 +146,7 @@ impl<'a, 's> State<'s> {
                     is_static,
                     ..
                 },
+            ..
         } = self;
 
         let tag_expr = tag.convert(ctx);
@@ -212,27 +204,25 @@ impl<'a, 's> State<'s> {
         if directives.is_empty() {
             element_expr
         } else {
-            let directives_expr: Expr = ArrayLit {
+            let directives_arr = ArrayLit {
                 span: DUMMY_SP,
                 elems: directives
                     .into_iter()
-                    .map(|directive| directive.convert_into_expr(ctx))
-                    .map(ExprFactory::as_arg)
+                    .map(|directive| directive.into_arg(ctx))
                     .map(Some)
                     .collect(),
-            }
-            .into();
+            };
 
-            ctx.with_directive(args![element_expr, directives_expr])
+            ctx.with_directive(args![element_expr, directives_arr])
         }
     }
 }
 
-impl<'a, 'b> Convert<'a, Expr> for Element<'b> {
-    fn convert(&self, ctx: &mut impl Context<'a>) -> Expr {
+impl<'a> Convert<Expr> for Element<'a> {
+    fn convert<C: Context>(&self, ctx: &mut C) -> Expr {
         let Self { tag, attrs, .. } = self;
 
-        let is_cmpt = is_component(tag, ctx);
+        let is_cmpt = !tag.is_native();
 
         let mut state = State::new(self);
 
@@ -243,11 +233,9 @@ impl<'a, 'b> Convert<'a, Expr> for Element<'b> {
 
             match key {
                 Key::Attr(REF) => {
-                    if is_dyn {
-                        state.need_patch()
-                    }
+                    state.need_patch();
 
-                    state.add_prop(REF, value)
+                    state.add_prop(REF, value);
                 },
                 Key::Attr(KEY) => state.add_prop(KEY, value),
                 Key::Attr(CLASS) => {
@@ -291,7 +279,7 @@ impl<'a, 'b> Convert<'a, Expr> for Element<'b> {
                 Key::Attr(V_SLOTS) => {
                     state.has_dyn_slot();
 
-                    state.slots = Some(value)
+                    state.add_slots(value)
                 },
 
                 Key::Attr(V_MODEL) => {
@@ -369,6 +357,6 @@ impl<'a, 'b> Convert<'a, Expr> for Element<'b> {
             }
         });
 
-        state.convert_into_expr(ctx)
+        state.into_expr(ctx)
     }
 }

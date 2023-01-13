@@ -1,46 +1,39 @@
-#![feature(box_syntax)]
 #![feature(box_patterns)]
-#![feature(is_some_and)]
 #![feature(let_chains)]
-#![feature(if_let_guard)]
 #![allow(clippy::not_unsafe_ptr_arg_deref)]
 
 use std::collections::HashMap;
 
 pub use options::PluginOptions;
 use swc_core::{
-    common::{comments::Comments, Mark},
+    common::Mark,
     ecma::{
         ast::{Expr, Ident, Module, Program},
         visit::{as_folder, noop_visit_mut_type, FoldWith, VisitMut, VisitMutWith},
     },
-    plugin::{plugin_transform, proxies::TransformPluginProgramMetadata as Metadata},
+    plugin::{
+        plugin_transform,
+        proxies::{PluginCommentsProxy as Comments, TransformPluginProgramMetadata as Metadata},
+    },
 };
 use swc_helper_jsx_transform::shared::Transform;
 use swc_helper_module_import::ImportHelper;
 
-use crate::{
-    hoist::Hoist,
-    shared::{convert::Convert, expr::ExprExtend},
-};
+use crate::{convert::Convert, hoist::Hoist, revise::Revise, shared::expr::ExprExtend};
 
 mod constant;
 mod context;
-mod element;
-mod fragment;
+mod convert;
 mod hoist;
 mod options;
-mod patch_flag;
+mod revise;
 mod shared;
-mod split_static;
-mod text;
 mod utils;
-mod vnode;
 
 #[allow(dead_code)]
-pub struct VueJSX<'a, C: Comments> {
+pub struct VueJSX<'a> {
     opts: PluginOptions,
-    comments: Option<C>,
+    comments: Option<Comments>,
     unresolved_mark: Mark,
 
     import_helper: ImportHelper<'a>,
@@ -52,8 +45,8 @@ pub struct VueJSX<'a, C: Comments> {
     scope_hoist: Hoist<'a>,
 }
 
-impl<'a, C: Comments> VueJSX<'a, C> {
-    pub fn new(opts: PluginOptions, comments: Option<C>, unresolved_mark: Mark) -> Self {
+impl<'a> VueJSX<'a> {
+    pub fn new(opts: PluginOptions, comments: Option<Comments>, unresolved_mark: Mark) -> Self {
         Self {
             opts,
             comments,
@@ -75,20 +68,21 @@ impl<'a, C: Comments> VueJSX<'a, C> {
     }
 }
 
-impl<'a, 'b, C: Comments> VueJSX<'a, C> {
+impl<'a, 'b> VueJSX<'a> {
     pub fn compile<T, U>(&mut self, target: &'b T) -> Expr
     where
         T: Transform<'b, U>,
-        U: Convert<'a, Expr>,
+        U: Revise + Convert<Expr>,
     {
-        target
-            .transform()
-            .convert(self)
-            .with_hoist(&mut self.scope_hoist)
+        let mut ir = target.transform();
+
+        ir.revise(self);
+
+        ir.convert(self).with_hoist(&mut self.scope_hoist)
     }
 }
 
-impl<'a, C: Comments> VisitMut for VueJSX<'a, C> {
+impl<'a> VisitMut for VueJSX<'a> {
     noop_visit_mut_type!();
 
     fn visit_mut_module(&mut self, module: &mut Module) {

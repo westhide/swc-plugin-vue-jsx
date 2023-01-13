@@ -1,4 +1,7 @@
-use swc_core::ecma::ast::Expr;
+use swc_core::ecma::{
+    ast::{Expr, ExprOrSpread},
+    utils::ExprFactory,
+};
 
 use crate::{
     array_lit,
@@ -7,13 +10,13 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Directive<'s> {
-    pub name: &'s str,
+pub struct Directive<'a> {
+    pub name: &'a str,
     pub value: Expr,
 }
 
-impl<'a, 's> Directive<'s> {
-    pub fn convert_into_expr(self, ctx: &mut impl Context<'a>) -> Expr {
+impl<'a> Directive<'a> {
+    pub fn into_arg<C: Context>(self, ctx: &mut C) -> ExprOrSpread {
         let Self { name, value } = self;
 
         let directive = match name {
@@ -23,6 +26,6 @@ impl<'a, 's> Directive<'s> {
             name => ctx.resolve("resolveDirective", &name[2..]),
         };
 
-        array_lit![directive, value].into()
+        array_lit![directive, value].as_arg()
     }
 }

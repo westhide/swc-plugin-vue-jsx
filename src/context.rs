@@ -15,14 +15,14 @@ use crate::{
     VueJSX,
 };
 
-pub trait Context<'a> {
-    fn is_unresolved<'b>(&self, ident: &Ident) -> bool;
+pub trait Context {
+    fn is_unresolved(&self, ident: &Ident) -> bool;
 
     fn is_custom_element(&self, text: &str) -> bool;
 
-    fn import_from_vue(&mut self, name: &'a str) -> Ident;
+    fn import_from_vue(&mut self, name: &'static str) -> Ident;
 
-    fn get_ident(&mut self, name: &'a str) -> Ident;
+    fn get_ident(&mut self, name: &'static str) -> Ident;
 
     fn add_pure_comment(&self, pos: BytePos);
 
@@ -34,11 +34,11 @@ pub trait Context<'a> {
 
     fn hoist_to_scope(&mut self, expr: Expr) -> Ident;
 
-    fn invoke(&mut self, func: &'a str, args: Vec<ExprOrSpread>) -> Expr {
+    fn invoke(&mut self, func: &'static str, args: Vec<ExprOrSpread>) -> Expr {
         self.import_from_vue(func).call(args)
     }
 
-    fn resolve<T: Into<Expr>>(&mut self, func: &'a str, target: T) -> Expr
+    fn resolve<T: Into<Expr>>(&mut self, func: &'static str, target: T) -> Expr
     where
         Self: Sized,
     {
@@ -76,7 +76,7 @@ pub trait Context<'a> {
     }
 }
 
-impl<'a, C: Comments> Context<'a> for VueJSX<'a, C> {
+impl<'a> Context for VueJSX<'a> {
     fn is_unresolved(&self, ident: &Ident) -> bool {
         ident.span.has_mark(self.unresolved_mark)
     }
@@ -85,11 +85,11 @@ impl<'a, C: Comments> Context<'a> for VueJSX<'a, C> {
         regex_set!(&self.opts.custom_element_patterns).is_match(text)
     }
 
-    fn import_from_vue(&mut self, name: &'a str) -> Ident {
+    fn import_from_vue(&mut self, name: &'static str) -> Ident {
         self.import_helper.get_or_import(name, "vue").clone()
     }
 
-    fn get_ident(&mut self, name: &'a str) -> Ident {
+    fn get_ident(&mut self, name: &'static str) -> Ident {
         self.ident_map
             .entry(name)
             .or_insert_with(|| private_ident!(name))

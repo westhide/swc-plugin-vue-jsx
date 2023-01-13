@@ -5,11 +5,11 @@ use crate::{
     args,
     constant::{FRAGMENT, NULL_EXPR},
     context::Context,
-    shared::convert::Convert,
+    convert::Convert,
 };
 
-impl<'a, 'b> Convert<'a, Expr> for Fragment<'b> {
-    fn convert(&self, ctx: &mut impl Context<'a>) -> Expr {
+impl<'a> Convert<Expr> for Fragment<'a> {
+    fn convert<C: Context>(&self, ctx: &mut C) -> Expr {
         let fragment_ident = ctx.import_from_vue(FRAGMENT);
 
         let children_expr = self.children.convert(ctx);
