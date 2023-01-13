@@ -1,0 +1,10 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { Fragment, createStaticVNode, createVNode } from "vue";
+const _hoisted_ = createStaticVNode("<div ></div><div ></div><div ></div><div ></div><div ></div>", 5);
+createVNode(Fragment, null, [
+    _hoisted_
+]);
+

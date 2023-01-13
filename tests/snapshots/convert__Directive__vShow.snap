@@ -1,0 +1,12 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { createVNode, vShow, withDirectives } from "vue";
+withDirectives(createVNode("div", null, null, 512), [
+    [
+        vShow,
+        a
+    ]
+]);
+

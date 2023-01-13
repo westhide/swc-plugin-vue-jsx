@@ -1,0 +1,11 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { Fragment, createElementVNode, createVNode } from "vue";
+const _hoisted_ = createElementVNode("div", null, null, -1);
+createVNode(Fragment, null, [
+    _hoisted_,
+    _hoisted_
+]);
+

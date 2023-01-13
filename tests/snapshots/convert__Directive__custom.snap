@@ -1,0 +1,15 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { createVNode, resolveDirective, withDirectives } from "vue";
+(()=>{
+    const _v = resolveDirective("custom");
+    return withDirectives(createVNode("div", null, null, 512), [
+        [
+            _v,
+            a
+        ]
+    ]);
+})();
+

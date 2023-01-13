@@ -1,0 +1,11 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { createVNode } from "vue";
+createVNode("div", {
+    "ns:name": a
+}, null, 8, [
+    "ns:name"
+]);
+

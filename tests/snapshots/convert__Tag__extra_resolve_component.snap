@@ -1,0 +1,10 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { resolveComponent, createVNode } from "vue";
+(()=>{
+    const _v = resolveComponent("A");
+    return createVNode(_v, null, null);
+})();
+

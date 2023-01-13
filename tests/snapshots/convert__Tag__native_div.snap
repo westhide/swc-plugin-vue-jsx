@@ -1,0 +1,8 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { createElementVNode } from "vue";
+const _hoisted_ = createElementVNode("div", null, null, -1);
+_hoisted_;
+

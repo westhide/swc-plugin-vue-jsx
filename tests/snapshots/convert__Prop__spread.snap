@@ -1,0 +1,7 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { mergeProps, createVNode } from "vue";
+createVNode("div", mergeProps(a), null, 16);
+

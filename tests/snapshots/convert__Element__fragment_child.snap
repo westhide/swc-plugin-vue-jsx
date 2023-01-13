@@ -1,0 +1,9 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { createVNode, Fragment } from "vue";
+createVNode("div", null, [
+    createVNode(Fragment, null, [])
+]);
+

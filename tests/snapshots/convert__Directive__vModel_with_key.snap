@@ -1,0 +1,15 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { resolveComponent, createVNode } from "vue";
+(()=>{
+    const _v = resolveComponent("A");
+    return createVNode(_v, {
+        key: a,
+        "onUpdate:key": ($v)=>a = $v
+    }, null, 8, [
+        "key"
+    ]);
+})();
+

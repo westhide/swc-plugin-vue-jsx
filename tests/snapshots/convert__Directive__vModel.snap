@@ -1,0 +1,14 @@
+---
+source: tests/convert.rs
+expression: code
+---
+import { createVNode, vModelText, withDirectives } from "vue";
+withDirectives(createVNode("input", {
+    "onUpdate:modelValue": ($v)=>a = $v
+}, null, 512), [
+    [
+        vModelText,
+        a
+    ]
+]);
+
