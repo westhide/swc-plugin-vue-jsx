@@ -5,6 +5,7 @@
 use std::collections::HashMap;
 
 pub use options::PluginOptions;
+use regex::RegexSet;
 use swc_core::{
     common::Mark,
     ecma::{
@@ -32,25 +33,30 @@ mod utils;
 
 #[allow(dead_code)]
 pub struct VueJSX<'a> {
-    opts: PluginOptions,
     comments: Option<Comments>,
     unresolved_mark: Mark,
 
+    static_threshold: usize,
+    custom_tag_regex: RegexSet,
+
     import_helper: ImportHelper<'a>,
-
     ident_map: HashMap<&'a str, Ident>,
-
     module_hoist: Hoist<'a>,
-
     scope_hoist: Hoist<'a>,
 }
 
 impl<'a> VueJSX<'a> {
     pub fn new(opts: PluginOptions, comments: Option<Comments>, unresolved_mark: Mark) -> Self {
+        let PluginOptions {
+            custom_element_patterns,
+            static_threshold,
+        } = opts;
+
         Self {
-            opts,
             comments,
             unresolved_mark,
+            static_threshold,
+            custom_tag_regex: RegexSet::new(custom_element_patterns).unwrap(),
             import_helper: ImportHelper::default(),
             ident_map: HashMap::new(),
             module_hoist: Hoist::new("_hoisted_"),

@@ -10,7 +10,7 @@ use swc_core::{
 };
 
 use crate::{
-    args, regex_set,
+    args,
     shared::{expr::ExprExtend, ident::IdentExtend},
     VueJSX,
 };
@@ -82,7 +82,7 @@ impl<'a> Context for VueJSX<'a> {
     }
 
     fn is_custom_element(&self, text: &str) -> bool {
-        regex_set!(&self.opts.custom_element_patterns).is_match(text)
+        self.custom_tag_regex.is_match(text)
     }
 
     fn import_from_vue(&mut self, name: &'static str) -> Ident {
@@ -105,7 +105,7 @@ impl<'a> Context for VueJSX<'a> {
     }
 
     fn static_threshold(&self) -> usize {
-        self.opts.static_threshold
+        self.static_threshold
     }
 
     fn hoist_to_module(&mut self, expr: Expr) -> Ident {
