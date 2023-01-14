@@ -21,7 +21,7 @@ import { transform } from "@swc/core";
 
 export type PluginOptions = {
   // staticVNodes above threshold will compile to html
-  staticThreshold?: number;
+  staticThreshold?: number /* default=5 */;
   // regexs match custom element tag
   customElementPatterns?: string[];
 };
@@ -462,8 +462,37 @@ const vnode = (() => {
 
 ### [Static Hoisting](https://vuejs.org/guide/extras/rendering-mechanism.html#static-hoisting)
 
-> - hoist static VNode
-> - turn consecutive static VNode to html template
+- hoist static VNode
+- turn consecutive static VNode to html template
+
+```jsx
+// staticThreshold = 5
+const tmpl_vnode = (
+  <>
+    <div>1</div>
+    <div>2</div>
+    <div>3</div>
+    <div>4</div>
+    <div>5</div>
+  </>
+);
+```
+
+<details>
+<summary>explore</summary>
+
+```js
+import { Fragment, createStaticVNode, createVNode } from "vue";
+
+const _hoisted_ = createStaticVNode(
+  "<div >1</div><div >2</div><div >3</div><div >4</div><div >5</div>",
+  5
+);
+
+const tmpl_vnode = createVNode(Fragment, null, [_hoisted_]);
+```
+
+</details><br>
 
 ### [Tree Flattening](https://vuejs.org/guide/extras/rendering-mechanism.html#tree-flattening)
 
