@@ -1,6 +1,11 @@
 import { type Plugin, createFilter } from "vite";
 import { transform } from "@swc/core";
 
+export type PluginOptions = {
+  staticThreshold?: number;
+  customElementPatterns?: string[];
+};
+
 export default function () {
   const filter = createFilter(/\.[jt]sx$/);
 
