@@ -131,7 +131,7 @@ export const App = defineComponent({
 
 ### Tag
 
-**1. native**
+#### native
 
 ```jsx
 const vnode = <div></div>;
@@ -150,7 +150,7 @@ const vnode = _hoisted_;
 
 </details>
 
-**2. componet**
+#### componet
 
 ```jsx
 import { A } from "./componets";
@@ -170,7 +170,7 @@ const vnode = createVNode(A, null, null);
 
 </details>
 
-**3. resolveComponet**
+#### resolveComponet
 
 ```jsx
 const vnode = <A></A>;
@@ -190,7 +190,7 @@ const vnode = (() => {
 
 </details>
 
-**4. member**
+#### member
 
 ```jsx
 const vnode = <A.b></A.b>;
@@ -207,7 +207,7 @@ const vnode = createVNode(A.b, null, null);
 
 </details>
 
-**5. custom**
+#### custom
 
 ```jsx
 // customElementPatterns: ["custom-tag"]
@@ -228,7 +228,7 @@ const vnode = createVNode("custom-tag", null, null);
 
 ### Attribute / Prop
 
-**1. literal**
+#### literal
 
 ```jsx
 const vnode = <div class="box"></div>;
@@ -247,7 +247,7 @@ const vnode = _hoisted_;
 
 </details>
 
-**2. boolean attribute**
+#### boolean attribute
 
 ```jsx
 const vnode = <input autofocus />;
@@ -266,7 +266,7 @@ const vnode = _hoisted_;
 
 </details>
 
-**3. binding**
+#### binding
 
 ```jsx
 const vnode = <div class={a}></div>;
@@ -283,7 +283,7 @@ const vnode = createVNode("div", { class: a }, null, 2);
 
 </details>
 
-**4. spread / mergeProps**
+#### spread / mergeProps
 
 ```jsx
 const vnode = <div {...a} class="box"></div>;
@@ -302,7 +302,7 @@ const vnode = createVNode("div", mergeProps(a, { class: "box" }), null, 16);
 
 ### Directive
 
-**1. v-text**
+#### v-text
 
 ```jsx
 const vnode = <div v-text="msg"></div>;
@@ -319,7 +319,7 @@ const vnode = createVNode("div", { textContent: "msg" }, null);
 
 </details>
 
-**2. v-html**
+#### v-html
 
 ```jsx
 const vnode = <div v-html="<span>hello</span>"></div>;
@@ -336,7 +336,7 @@ const vnode = createVNode("div", { innerHTML: "<span>hello</span>" }, null);
 
 </details>
 
-**3. v-show**
+#### v-show
 
 ```jsx
 const vnode = <div v-show={isShow}></div>;
@@ -355,7 +355,7 @@ const vnode = withDirectives(createVNode("div", null, null, 512), [
 
 </details>
 
-**3. v-model** <sup>`wip`</sup>
+#### v-model<sup>`wip`</sup>
 
 ```jsx
 const vnode = <input v-model={val} />;
@@ -406,7 +406,7 @@ const vnode = (() => {
 
 </details>
 
-**4. custom**
+#### custom
 
 ```jsx
 const vnode = <div v-custom={val}></div>;
@@ -426,9 +426,9 @@ const vnode = (() => {
 
 </details>
 
-### Slot <sup>`wip`</sup>
+### Slot<sup>`wip`</sup>
 
-**v-slots**
+#### v-slots
 
 ```jsx
 // const A = (_props, { slots }) => (
