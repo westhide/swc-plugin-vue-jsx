@@ -94,7 +94,7 @@ export default function () {
 }
 ```
 
-## </details><br>
+## </details>
 
 _Now you can use JSX in Vue Component !_
 
@@ -142,12 +142,13 @@ const vnode = <div></div>;
 
 ```js
 import { createElementVNode } from "vue";
+
 const _hoisted_ = createElementVNode("div", null, null, -1);
 
 const vnode = _hoisted_;
 ```
 
-</details><br>
+</details>
 
 **2. componet**
 
@@ -167,7 +168,7 @@ import { createVNode } from "vue";
 const vnode = createVNode(A, null, null);
 ```
 
-</details><br>
+</details>
 
 **3. resolveComponet**
 
@@ -187,7 +188,7 @@ const vnode = (() => {
 })();
 ```
 
-</details><br>
+</details>
 
 **4. member**
 
@@ -204,7 +205,7 @@ import { createVNode } from "vue";
 const vnode = createVNode(A.b, null, null);
 ```
 
-</details><br>
+</details>
 
 **5. custom**
 
@@ -223,7 +224,7 @@ import { createVNode } from "vue";
 const vnode = createVNode("custom-tag", null, null);
 ```
 
-</details><br>
+</details>
 
 ### Attribute / Prop
 
@@ -244,7 +245,7 @@ const _hoisted_ = createElementVNode("div", { class: "box" }, null, -1);
 const vnode = _hoisted_;
 ```
 
-</details><br>
+</details>
 
 **2. boolean attribute**
 
@@ -263,7 +264,7 @@ const _hoisted_ = createElementVNode("input", { autofocus: "" }, null, -1);
 const vnode = _hoisted_;
 ```
 
-</details><br>
+</details>
 
 **3. binding**
 
@@ -280,7 +281,7 @@ import { createVNode } from "vue";
 const vnode = createVNode("div", { class: a }, null, 2);
 ```
 
-</details><br>
+</details>
 
 **4. spread / mergeProps**
 
@@ -297,7 +298,7 @@ import { mergeProps, createVNode } from "vue";
 const vnode = createVNode("div", mergeProps(a, { class: "box" }), null, 16);
 ```
 
-</details><br>
+</details>
 
 ### Directive
 
@@ -316,7 +317,7 @@ import { createVNode } from "vue";
 const vnode = createVNode("div", { textContent: "msg" }, null);
 ```
 
-</details><br>
+</details>
 
 **2. v-html**
 
@@ -333,7 +334,7 @@ import { createVNode } from "vue";
 const vnode = createVNode("div", { innerHTML: "<span>hello</span>" }, null);
 ```
 
-</details><br>
+</details>
 
 **3. v-show**
 
@@ -352,7 +353,7 @@ const vnode = withDirectives(createVNode("div", null, null, 512), [
 ]);
 ```
 
-</details><br>
+</details>
 
 **3. v-model** <sup>`wip`</sup>
 
@@ -377,7 +378,7 @@ const vnode = withDirectives(
 );
 ```
 
-</details><br>
+</details>
 
 _v-model with arguments_
 
@@ -403,7 +404,7 @@ const vnode = (() => {
 })();
 ```
 
-</details><br>
+</details>
 
 **4. custom**
 
@@ -423,7 +424,7 @@ const vnode = (() => {
 })();
 ```
 
-</details><br>
+</details>
 
 ### Slot <sup>`wip`</sup>
 
@@ -452,7 +453,7 @@ const vnode = (() => {
 })();
 ```
 
-</details><br>
+</details>
 
 ## Features
 
@@ -492,7 +493,7 @@ const _hoisted_ = createStaticVNode(
 const tmpl_vnode = createVNode(Fragment, null, [_hoisted_]);
 ```
 
-</details><br>
+</details>
 
 ### [Tree Flattening](https://vuejs.org/guide/extras/rendering-mechanism.html#tree-flattening)
 
